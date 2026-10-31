@@ -5,7 +5,7 @@ another's comments:
 
 | Repository | Reviewer | How it runs here |
 | --- | --- | --- |
-| [kaipu-bench-wachi](https://github.com/niway-dev/kaipu-bench-wachi) | [Wachi Reviewer](https://github.com/niway-dev/wachi-reviewer) | `.github/workflows/wachi-bench.yml` on `main`, started with `/wachi review` on a pull request; the pin in that file names the engine version under test |
+| [kaipu-bench-wachi](https://github.com/niway-dev/kaipu-bench-wachi) | [Wachi Reviewer](https://github.com/niway-dev/wachiman) | `.github/workflows/wachi-bench.yml` on `main`, started with `/wachi review` on a pull request; the pin in that file names the engine version under test |
 | [kaipu-bench-pullfrog](https://github.com/niway-dev/kaipu-bench-pullfrog) | [Pullfrog](https://pullfrog.com) | GitHub App installed by the owner; `.github/workflows/pullfrog.yml` on `main`, copied unchanged from kaipu-record |
 | [kaipu-bench-coderabbit](https://github.com/niway-dev/kaipu-bench-coderabbit) | [CodeRabbit](https://coderabbit.ai) | GitHub App installed by the owner; no workflow |
 
@@ -13,8 +13,8 @@ It replays pull requests from the public repository
 [niway-dev/kaipu-record](https://github.com/niway-dev/kaipu-record), a desktop screen recorder
 (Electron, TypeScript, Bun monorepo). Nothing here is for development: branches are never merged,
 and `main` holds only this file and the reviewer's workflow. Methodology, scoring and results live
-in the Wachi repository: [`docs/benchmark/`](https://github.com/niway-dev/wachi-reviewer/tree/main/docs/benchmark)
-and the [benchmark spec](https://github.com/niway-dev/wachi-reviewer/blob/main/docs/specs/2026-10-31-review-benchmark-design.md).
+in the Wachi repository: [`docs/benchmark/`](https://github.com/niway-dev/wachiman/tree/main/docs/benchmark)
+and the [benchmark spec](https://github.com/niway-dev/wachiman/blob/main/docs/specs/2026-10-31-review-benchmark-design.md).
 
 ## Point in time
 
@@ -37,7 +37,7 @@ for lack of secrets; that noise is not scored.
 ## Exhibition replays: what the live reviews found (2026-10-31, kaipu-record)
 
 Both reviewers ran on Claude Opus 5.5. Every finding was checked by reading the code at the head.
-Full per-PR reports: [`docs/benchmark/2026-10-31/`](https://github.com/niway-dev/wachi-reviewer/tree/main/docs/benchmark/2026-10-31).
+Full per-PR reports: [`docs/benchmark/2026-10-31/`](https://github.com/niway-dev/wachiman/tree/main/docs/benchmark/2026-10-31).
 
 | PR | Size | Wachi v1.2.0 | Pullfrog | Top user-facing bug and who caught it |
 | --- | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ little else. No finding overlapped. Neither reviewer read the other's comments o
 - **Wachi, same version (v1.2.1):** the same 17 findings, give or take run-to-run variance. Three
   runs per PR measure that variance before any change is judged.
 - **Wachi, next version** (flow questions, `contracts`, risk map; see the
-  [design](https://github.com/niway-dev/wachi-reviewer/blob/main/docs/specs/2026-10-31-flow-questions-and-evidence-design.md)):
+  [design](https://github.com/niway-dev/wachiman/blob/main/docs/specs/2026-10-31-flow-questions-and-evidence-design.md)):
   keep the 17, gain the five Pullfrog-only bugs, stay well under $7.68.
 - **Pullfrog, fresh repository:** its kaipu-record learnings file and per-PR summaries do not
   exist here. Same findings as live would mean the memory did not matter; fewer would measure
@@ -73,7 +73,7 @@ from the controlled set below, judged blind.
 
 Mined read-only from kaipu-record on 2026-10-30: 145 real bugs from about 90 fix PRs, each traced
 (SZZ: blame of the lines the fix changed) to the PR that introduced it. Catalogue and method:
-[`kaipu-record-bug-catalogue.md`](https://github.com/niway-dev/wachi-reviewer/blob/main/docs/benchmark/kaipu-record-bug-catalogue.md).
+[`kaipu-record-bug-catalogue.md`](https://github.com/niway-dev/wachiman/blob/main/docs/benchmark/kaipu-record-bug-catalogue.md).
 By difficulty: 36 at level 5, 56 at level 4, 40 at level 3. Most common classes: state machines
 (33), ordering races (28), data loss (16), cross-file contracts (15).
 
@@ -123,7 +123,7 @@ the two Claude-based reviewers over CodeRabbit.
    `pullfrog.yml`; CodeRabbit: nothing).
 3. From a kaipu-record clone, `git push <repo> <base-sha>:refs/heads/replay/pr-<n>/base
    <head-sha>:refs/heads/replay/pr-<n>/head` for the five PRs
-   ([script](https://github.com/niway-dev/wachi-reviewer/blob/main/docs/benchmark/replay/push-replays.sh)).
+   ([script](https://github.com/niway-dev/wachiman/blob/main/docs/benchmark/replay/push-replays.sh)).
 4. Owner installs the Pullfrog and CodeRabbit apps on their repositories.
 5. Pull requests `[replay] <original title>` are opened from `head` to `base`, labelled `replay`,
    one per branch pair, never merged, closed when the reviews are in. In the Wachi repository
