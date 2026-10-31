@@ -70,8 +70,11 @@ CodeRabbit is a hosted service. Its useful ideas for Wachi are configuration ide
   may not be the best solution.
 - **Hosting the Claude subscription.** Pullfrog mints a one-year OAuth token
   (`sk-ant-oat01`, scope `user:inference`, the `claude setup-token` flow) and stores it on its
-  backend. Wachi lets the user set their own API key, or their own `CLAUDE_CODE_OAUTH_TOKEN`
-  secret if they choose to, and never stores it.
+  backend. Wachi takes the user's own API key and never stores it. Subscription use through the
+  unmodified Claude Code binary (`CLAUDE_CODE_OAUTH_TOKEN`) is permitted by Anthropic but not
+  wired yet: the adapter's `CHILD_ENV_ALLOWLIST` drops that variable and `preflight()` requires
+  `ANTHROPIC_API_KEY` (see the [harness research](2026-10-31-harness-options.md)). Through
+  OpenCode or any other third-party harness it is prohibited.
 - **A hosted analytics dashboard.** Pullfrog's console (spend, runs, spend by repo) is fed by a
   `PATCH /api/workflow-run/{id}` carrying model, tokens and `costUsd` for each run. Wachi's
   answer keeps the data in GitHub ([usage dashboard spec](../specs/2026-10-31-usage-dashboard-design.md)).
