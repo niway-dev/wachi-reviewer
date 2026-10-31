@@ -74,6 +74,7 @@ const output = (over: Partial<ReviewOutput> = {}): ReviewOutput => ({
 describe("parseCommand", () => {
   test("reads a review request, with or without paths", () => {
     expect(parseCommand("/wachi review")).toEqual({ kind: "review", paths: [] });
+    expect(parseCommand("/wachiman review")).toEqual({ kind: "review", paths: [] });
     expect(parseCommand("/wachi review apps/api/src/main docs/")).toEqual({
       kind: "review",
       paths: ["apps/api/src/main", "docs/"],
@@ -775,13 +776,13 @@ describe("buildReview", () => {
         path: "src/a.ts",
         line: 2,
         side: "RIGHT",
-        body: "👮 **Wachi Reviewer** · 🟠🐛 **Fix · bug: Off by one**\n\nFails for an empty list.\n\n<!-- wachi:finding -->",
+        body: "👮 **Wachiman** · 🟠🐛 **Fix · bug: Off by one**\n\nFails for an empty list.\n\n<!-- wachi:finding -->",
       },
       {
         path: "src/a.ts",
         line: 1,
         side: "RIGHT",
-        body: "👮 **Wachi Reviewer** · 🟡🧹 **Consider · cleanup: Naming**\n\nConsider a clearer name.\n\n<!-- wachi:finding -->",
+        body: "👮 **Wachiman** · 🟡🧹 **Consider · cleanup: Naming**\n\nConsider a clearer name.\n\n<!-- wachi:finding -->",
       },
     ]);
     expect(review.body).toContain("2 finding(s): 1 to fix, 1 to consider; 2 on their lines");
@@ -1148,7 +1149,7 @@ describe("buildReview body size", () => {
 
 describe("moveCommentsToBody limits", () => {
   const body = (extra = "") =>
-    `👮 **Wachi Reviewer** · review of the whole pull request, at \`abc1234\`: all 2 files reviewed.\n\n1 finding(s): 1 to fix; 1 on their lines. Reply in a comment's thread to answer it.\n\n### Summary\n\nOk.${extra}\n\n${SIGNATURE.review}\n\n${marker("abc1234def")}`;
+    `👮 **Wachiman** · review of the whole pull request, at \`abc1234\`: all 2 files reviewed.\n\n1 finding(s): 1 to fix; 1 on their lines. Reply in a comment's thread to answer it.\n\n### Summary\n\nOk.${extra}\n\n${SIGNATURE.review}\n\n${marker("abc1234def")}`;
 
   test("states that the comments moved instead of claiming inline ones", () => {
     const moved = moveCommentsToBody({

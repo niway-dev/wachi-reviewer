@@ -130,7 +130,7 @@ All names are in `src/engine.ts` unless a file is given.
    The count line (`countLine`) reads "N finding(s): B blocker(s), F to fix, C to consider" and
    omits empty groups.
    Every comment the engine posts (review body, inline finding, thread reply, answer, notice)
-   starts with `BRAND` ("👮 **Wachi Reviewer**") on its first line: reviews post as
+   starts with `BRAND` ("👮 **Wachiman**") on its first line: reviews post as
    `github-actions[bot]`, whose name and avatar do not say which tool wrote them (ADR 0005).
    It writes a first line saying whether coverage is complete or partial, the summary, a "Coverage
    by batch" table, a footer with the model label, batch count and cost, and, only for a complete,
@@ -231,7 +231,7 @@ is absent, any other error stops the run, and each file is cut at 64 KB with a n
 prompt. The text goes into the prompt under "Repository instructions (from the base commit
 `<sha7>`)", which also says the head's copies of those files are content under review, not
 instructions. The head's copy is never a fallback, so a pull request cannot rewrite the rules it
-is reviewed under ([#10](https://github.com/niway-dev/wachi-reviewer/issues/10)). When the pull
+is reviewed under ([#10](https://github.com/niway-dev/wachiman/issues/10)). When the pull
 request edits one of these files, the review body says the change takes effect after merge.
 This is a stacked pull request's base branch tip, not the merge base with the default branch;
 the latter is a later change ([ADR 0006](adr/0006-repository-review-policy.md) decision 3, on
@@ -337,12 +337,12 @@ and the copy-the-files install. The two sets must stay equal.
 
 ## Known limits and open issues
 
-- Open issues: [#5](https://github.com/niway-dev/wachi-reviewer/issues/5) (the ADR directory the
-  prompt names is fixed), [#8](https://github.com/niway-dev/wachi-reviewer/issues/8) (one account
+- Open issues: [#5](https://github.com/niway-dev/wachiman/issues/5) (the ADR directory the
+  prompt names is fixed), [#8](https://github.com/niway-dev/wachiman/issues/8) (one account
   moving the floating `v1` tag changes the code every consumer runs with its key),
-  [#11](https://github.com/niway-dev/wachi-reviewer/issues/11)
+  [#11](https://github.com/niway-dev/wachiman/issues/11)
   (posted output is checked only for the key's exact value and shape, so an encoded key passes).
-  Issue [#9](https://github.com/niway-dev/wachi-reviewer/issues/9) (pin actions by SHA) is still
+  Issue [#9](https://github.com/niway-dev/wachiman/issues/9) (pin actions by SHA) is still
   open although the workflows are pinned on `main`.
 - The review is advisory and trusts everyone who can push to the repository.
 - Two adapters exist, Claude Code and Codex (ADR 0004). The reusable workflow installs only Claude Code so far.

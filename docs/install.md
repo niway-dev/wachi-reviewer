@@ -14,7 +14,7 @@ permission ceiling; the reusable workflow in this repository runs the engine.
 1. **Add the caller file.** Copy
    [`templates/agent-review-caller.yml`](../templates/agent-review-caller.yml) to
    `.github/workflows/agent-review.yml`. Its `uses:` line names the latest exact release tag;
-   check the [releases](https://github.com/niway-dev/wachi-reviewer/releases) if you want another.
+   check the [releases](https://github.com/niway-dev/wachiman/releases) if you want another.
 2. **Add the secret.** Create an Anthropic API key at <https://console.anthropic.com> and save it
    as the repository secret `ANTHROPIC_API_KEY` (Settings, Secrets and variables, Actions).
 3. **Set the operator.** Replace `operator: EDIT-THIS-github-login` with the GitHub login of the

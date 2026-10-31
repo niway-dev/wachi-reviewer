@@ -162,8 +162,8 @@ describe("the batch loop against a fake provider", () => {
     const body = posted.review?.body ?? "";
     // The binary logo is the only file not reviewed, so the review is partial and unmarked.
     // Every comment opens with the brand, so a reader sees it is Wachi's despite the bot account.
-    expect(body.startsWith("👮 **Wachi Reviewer** · ")).toBe(true);
-    expect(posted.review?.comments[0].body.startsWith("👮 **Wachi Reviewer** · 🟠🐛")).toBe(true);
+    expect(body.startsWith("👮 **Wachiman** · ")).toBe(true);
+    expect(posted.review?.comments[0].body.startsWith("👮 **Wachiman** · 🟠🐛")).toBe(true);
     expect(body.split("\n")[0]).toContain("Partial review");
     expect(body).toContain("reviewed 3 of 4 files");
     expect(body).toContain(`\`${LOGO}\` (binary)`);

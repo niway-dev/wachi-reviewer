@@ -1,8 +1,7 @@
 # ADR 0005: The name Wachi Reviewer and the `/wachi` command
 
-- **Status:** accepted. The command, the docs and the mascot are in this repository; the
-  repository rename to `niway-dev/wachi-reviewer` is a manual step by the owner, and the two
-  consumers' `uses:` lines change after it.
+- **Status:** accepted; decision 1 (the name and the repository) is superseded by
+  [ADR 0009](0009-name-wachiman.md). The `/wachi` command and everything else here still hold.
 - **Date:** 2026-10-27
 
 ## Context
