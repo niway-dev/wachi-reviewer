@@ -138,3 +138,9 @@ Runs (niway-dev/kaipu-record Actions): Wachi 41153055286 (#463), 41153536509 (#4
 41153716355 (#465), 41153724626 (#466), 41153836694 (#467). Pullfrog first runs 41153059096,
 41153540436, 41153720657, 41153729056, 41153840590; re-reviews 41154789953 (#463),
 41154968488 (#464), 41154158467 (#465), 41154544455 (#466).
+
+## Addendum: documentation PRs #472 and #473
+
+Two docs-only PRs reviewed the same day by both reviewers: [pr-472-473.md](pr-472-473.md). Two
+valid findings each, one shared per PR. The split repeats at small scale: Pullfrog on the effect of
+the change, Wachi on claim-vs-code.

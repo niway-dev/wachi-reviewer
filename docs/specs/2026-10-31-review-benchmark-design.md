@@ -123,8 +123,18 @@ reviews are in.
 Each base commit was checked to be an ancestor of its head, and the file counts match the
 original reviews.
 
-**Where.** In niway-dev/kaipu-record, where both apps are installed. Pullfrog's stored learnings
-for that repository now include what its runs learned on these PRs (its #464 run added three
+**Where.** Three public repositories created on 2026-10-31, one per reviewer, each with the
+ten `replay/pr-<n>/{base,head}` branches already pushed (script and files under
+[`docs/benchmark/replay/`](../benchmark/replay/)):
+[kaipu-bench-wachi](https://github.com/niway-dev/kaipu-bench-wachi),
+[kaipu-bench-pullfrog](https://github.com/niway-dev/kaipu-bench-pullfrog),
+[kaipu-bench-coderabbit](https://github.com/niway-dev/kaipu-bench-coderabbit). Wachi runs on
+demand (`/wachi review`) from a workflow on the default branch, because a `pull_request` event
+would run the replayed commit's own `agent-review.yml` (v1.2.0); that one is disabled in the
+repository once it has registered. The owner installs the Pullfrog and CodeRabbit apps on their
+repositories; pull requests are opened only after that, so every reviewer sees each PR once, at
+open. Still outstanding from the live runs: Pullfrog's stored learnings
+for kaipu-record include what its runs learned on these PRs (its #464 run added three
 sections), and kaipu's focus file will carry the new memory lines, so both reviewers come in with
 priors. The exhibition reports that and makes no generalisation claim; the controlled benchmark,
 in fresh repositories, is where claims are made.
