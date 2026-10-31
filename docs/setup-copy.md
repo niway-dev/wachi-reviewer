@@ -54,7 +54,8 @@ the Coverage by batch table)".
   total)`; the total is `AGENT_REVIEW_BUDGET_USD`. Below $0.05 left, no batch starts and the
   rest is listed as not reached. A call that dies without a result is counted at its cap and does
   not end the review. The CLI cap is a client-side soft limit and can overshoot.
-- **Review body.** The first line says whether the review is complete or partial. A collapsed
+- **Review body.** The first line starts with "👮 **Wachi Reviewer**", as every comment the
+  tool posts does, and says whether the review is complete or partial. A collapsed
   "Coverage by batch" table lists each batch with its files, lines, highest risk, status
   (`reviewed`, `reviewed after a retry`, `ran out of its budget`, `not run: budget spent`, …),
   turns and cost; the footer shows the model, the number of batches and the total cost. The
