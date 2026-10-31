@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0](https://github.com/niway-dev/wachiman/compare/v1.2.1...v1.3.0) (2026-10-31)
+
+
+### Features
+
+* open every posted comment with the Wachi Reviewer brand ([8953788](https://github.com/niway-dev/wachiman/commit/8953788288ab72d3afd4af113b2c2a74903a8f31))
+* open every posted comment with the Wachi Reviewer brand ([6c607e7](https://github.com/niway-dev/wachiman/commit/6c607e78f1f0ca199cfa831829b2bbeb015da758))
+* rename the tool to Wachiman ([e5c3845](https://github.com/niway-dev/wachiman/commit/e5c3845c1284b5fccd4f739b73d71f4713ed6b25))
+* rename the tool to Wachiman ([64d3434](https://github.com/niway-dev/wachiman/commit/64d3434004937c748bb1fd8dd51d65ab8016006b))
+
 ## [1.2.1](https://github.com/niway-dev/wachi-reviewer/compare/v1.2.0...v1.2.1) (2026-10-31)
 
 
