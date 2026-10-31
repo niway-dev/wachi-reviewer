@@ -123,6 +123,12 @@ reviews are in.
 Each base commit was checked to be an ancestor of its head, and the file counts match the
 original reviews.
 
+**Live and replay are complementary.** kaipu-record keeps both bots (and may add CodeRabbit)
+as a live test: first reviews do not cross-contaminate. Replays need the benchmark repositories
+because live PRs cannot be re-run at the same commit, Pullfrog's stored learnings for kaipu-record
+already contain these bugs, second reviews do read each other's threads (#463), and the author's
+fixes answer both bots at once.
+
 **Where.** Three public repositories created on 2026-10-31, one per reviewer, each with the
 ten `replay/pr-<n>/{base,head}` branches already pushed (script and files under
 [`docs/benchmark/replay/`](../benchmark/replay/)):

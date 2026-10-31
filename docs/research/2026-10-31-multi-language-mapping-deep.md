@@ -294,3 +294,29 @@ Option C (download in the workflow, verify, run `ast-grep` not `sg`): `ast-grep`
   PyPI `pyright` wrapper; jedi/pyright timings; `fetch-depth` cost for 200 commits.
 - Noise for generic names is counts only. Non-TS languages were tested on tiny hand-written
   samples, not real repositories. The compiled-binary route (3.3) is not needed: Wachi runs from source.
+
+## Addendum 2026-10-31: how Pullfrog and CodeRabbit get cross-file context
+
+**Pullfrog parses nothing.** Its change-impact artefact (`utils/changeImpact.ts` in v0.1.110)
+takes identifiers from the diff with `/[A-Za-z_][A-Za-z0-9_]*/`, keeps those of 4+ characters
+with an uppercase letter or an underscore, scores each 1–4 by the keyword before it (`class`,
+`def`, `func`, `fn`, `struct`, `trait` → 4; `const`/`let`/`var` or a following `(`/`:` → 3), runs
+one exact-word `git grep` over tracked text files, and caps everything: 24 candidates, 12 atoms,
+6 references each, 160-character excerpts, 16 KB, 60 s. Language-agnostic by being textual. The
+model does the rest with Read and Grep. This is the tool that caught four of five user-facing
+bugs the field benchmark records, so **the textual floor (option A) is parity with Pullfrog in
+every language**, and tree-sitter (option B) is beyond it, not catch-up.
+
+**CodeRabbit indexes.** Its Code Graph Analysis builds, per review and on its servers, a graph of
+symbol definitions and references across the whole repository plus files that co-change in
+history, and gives the model definition files, reference files and related files. Nineteen
+languages (TS, TSX, JS, Go, Rust, Java, Kotlin, Swift, Python, Ruby, C, C++, C#, PHP, Scala,
+Elixir, Lua, Bash, CSS); Lite tier and above. That is the risk map of the flow-questions design,
+hosted. Wachi's version runs in the consumer's runner at review time; the model gets a similar
+slice, the code never leaves the consumer's infrastructure. Sources:
+[docs](https://docs.coderabbit.ai/integrations/code-graph-analysis),
+[changelog](https://docs.coderabbit.ai/changelog/code-graph-analysis); the per-review rebuild
+detail is from a [secondary source](https://theaiengineer.substack.com/p/how-coderabbit-actually-works).
+
+Neither tool resolves types: an interface in Java or a trait in Rust is invisible to both without
+a build. Nobody does that on an arbitrary PR checkout.
