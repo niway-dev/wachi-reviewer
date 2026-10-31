@@ -139,14 +139,17 @@ const at = (f: { path: string; line: number }) =>
  * The first thing on every comment the engine posts, so a reader knows at a glance it is Wachi's.
  * Reviews post as `github-actions[bot]` (ADR 0005), whose avatar and name say nothing about the tool.
  */
-export const BRAND = "👮 **Wachi Reviewer**";
+export const BRAND = "👮 **Wachiman**";
 /** `text` after the brand, on the same first line. */
 export const branded = (text: string) => `${BRAND} · ${text}`;
 
 /** The default command keyword. A slash command, so writing it notifies no GitHub account. */
 export const DEFAULT_MENTION = "/wachi";
-/** The earlier keywords, which keep working besides the configured one (ADR 0005). */
-export const MENTION_ALIASES = ["@agent-review", "@claude"];
+/**
+ * Other keywords that keep working besides the configured one: the earlier ones (ADR 0005) and the
+ * full name (ADR 0009). `/wachi` does not match `/wachiman`, since a keyword must end a word.
+ */
+export const MENTION_ALIASES = ["/wachiman", "@agent-review", "@claude"];
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export function parseCommand(body: string, keyword = DEFAULT_MENTION): Command | null {

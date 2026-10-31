@@ -7,7 +7,7 @@ name: Agent review
 # advisory: never a required check, never an approval or a change request, never a merge
 # gate. What to look for beyond the defaults is in `.github/agent-review.md`.
 #
-# The "copy the files" workflow template. Copy it with the `src/` folder of niway-dev/wachi-reviewer
+# The "copy the files" workflow template. Copy it with the `src/` folder of niway-dev/wachiman
 # (as `scripts/agent-review/`, see docs/setup-copy.md), record the decision in the repository's ADRs, and edit the
 # trust paragraph below to say who can push. It runs narrowly:
 #   - `review`: once, when a pull request opens ready for review or leaves draft.

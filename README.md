@@ -1,10 +1,12 @@
-# Wachi Reviewer
+# Wachiman
 
-<img src="docs/assets/wachi.png" alt="Wachi, a cartoon watchman with a cap and a whistle" width="96" align="right">
+<img src="docs/assets/wachi.png" alt="Wachiman, a cartoon watchman with a cap and a whistle" width="96" align="right">
 
 Advisory pull request reviews by an agent CLI, run inside your own GitHub Actions with your own
-API key. Wachi is named after the Peruvian *wachimán*, the watchman who warns you and lets you
-decide. Comment `/wachi review` on a pull request to ask for a review of what changed.
+API key. Wachiman (pronounced *watchman*) is named after the Peruvian *wachimán*, the street
+watchman who warns you and lets you decide; the Spanish word comes from the English one. Comment
+`/wachi review` (or `/wachiman review`) on a pull request to ask for a review of what changed.
+Every comment it posts opens with "👮 **Wachiman**", so you can tell it apart from other bots.
 
 Each finding arrives as an inline review comment on its line, labelled with a severity (when to
 act: Blocker, Fix, Consider) and a topic (what it is about: bug, docs, security…), for example
@@ -78,7 +80,7 @@ on:
 permissions: { contents: read, pull-requests: write, issues: read }
 jobs:
   review:
-    uses: niway-dev/wachi-reviewer/.github/workflows/review.yml@v1.0.0
+    uses: niway-dev/wachiman/.github/workflows/review.yml@v1.0.0
     with:
       operator: EDIT-THIS-github-login
     secrets:
