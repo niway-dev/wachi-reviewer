@@ -56,3 +56,11 @@ Reasons:
 - A provider adapter needs a runtime that Bun cannot drive.
 - A second maintainer prefers another stack and is willing to carry the migration.
 - Bun's release cadence breaks the version pin repeatedly.
+
+## Amendment 2026-10-31
+
+The owner relaxed the rule: a dependency may enter when a measured experiment shows it improves
+reviews and the artefact is pinned by hash with a manifest. First candidate: vendored tree-sitter
+WASM for the risk map ([spec](../specs/2026-10-31-flow-questions-and-evidence-design.md),
+decision 14). `package.json` stays free of runtime dependencies; vendored files count as
+dependencies for review and licensing purposes.
