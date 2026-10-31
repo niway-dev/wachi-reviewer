@@ -129,6 +129,9 @@ All names are in `src/engine.ts` unless a file is given.
    `info` finding under "For your information", never inline, because information needs no reply.
    The count line (`countLine`) reads "N finding(s): B blocker(s), F to fix, C to consider" and
    omits empty groups.
+   Every comment the engine posts (review body, inline finding, thread reply, answer, notice)
+   starts with `BRAND` ("👮 **Wachi Reviewer**") on its first line: reviews post as
+   `github-actions[bot]`, whose name and avatar do not say which tool wrote them (ADR 0005).
    It writes a first line saying whether coverage is complete or partial, the summary, a "Coverage
    by batch" table, a footer with the model label, batch count and cost, and, only for a complete,
    unscoped review, the marker for the next incremental run. Every piece of model text (summary,

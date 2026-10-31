@@ -135,6 +135,14 @@ export const label = (f: Finding) =>
 const at = (f: { path: string; line: number }) =>
   neutralise(f.line > 0 ? `${f.path}:${f.line}` : f.path);
 
+/**
+ * The first thing on every comment the engine posts, so a reader knows at a glance it is Wachi's.
+ * Reviews post as `github-actions[bot]` (ADR 0005), whose avatar and name say nothing about the tool.
+ */
+export const BRAND = "👮 **Wachi Reviewer**";
+/** `text` after the brand, on the same first line. */
+export const branded = (text: string) => `${BRAND} · ${text}`;
+
 /** The default command keyword. A slash command, so writing it notifies no GitHub account. */
 export const DEFAULT_MENTION = "/wachi";
 /** The earlier keywords, which keep working besides the configured one (ADR 0005). */
@@ -618,7 +626,7 @@ export function buildReview(input: {
         path: f.path,
         line: f.line,
         side: "RIGHT",
-        body: `${label(f)}\n\n${neutralise(f.body)}\n\n${SIGNATURE.finding}`,
+        body: `${branded(label(f))}\n\n${neutralise(f.body)}\n\n${SIGNATURE.finding}`,
       });
     } else outsideDiff.push(f);
   }
@@ -633,11 +641,11 @@ export function buildReview(input: {
   const fullList = list.join(", ");
   if (notReviewed.length > 0) {
     parts.push(
-      `⚠️ **Partial review**: the agent reviewed ${expected.length - notReviewed.length} of ${expected.length} files of ${scope}, at \`${short(headSha)}\`. Not reviewed: ${fullList}. Ask \`${mention} review <paths>\` for the rest.`,
+      branded(`⚠️ **Partial review**: the agent reviewed ${expected.length - notReviewed.length} of ${expected.length} files of ${scope}, at \`${short(headSha)}\`. Not reviewed: ${fullList}. Ask \`${mention} review <paths>\` for the rest.`),
     );
   } else {
     parts.push(
-      `**Agent review** of ${scope}, at \`${short(headSha)}\`: all ${expected.length} files reviewed.`,
+      branded(`review of ${scope}, at \`${short(headSha)}\`: all ${expected.length} files reviewed.`),
     );
   }
   if (input.instructionChanges && input.instructionChanges.files.length > 0) {
@@ -1258,7 +1266,8 @@ export function review(deps: Deps, repo: string, pr: number, words: string[]) {
     gh(["pr", "view", String(pr), "-R", repo, "--json", "headRefOid,title,body,author"]),
   );
   const headSha: string = meta.headRefOid;
-  const bodyOnly = (body: string) => postReview(deps, repo, pr, headSha, { body, comments: [] });
+  const bodyOnly = (body: string) =>
+    postReview(deps, repo, pr, headSha, { body: branded(body), comments: [] });
 
   const prFiles = listFiles(gh, repo, pr);
   const { paths, ignored } = resolveScope(
@@ -1449,7 +1458,7 @@ export function review(deps: Deps, repo: string, pr: number, words: string[]) {
       "POST",
       `repos/${repo}/pulls/${pr}/comments/${r.comment_id}/replies`,
       "-f",
-      `body=**${label}** at \`${short(headSha)}\`: ${neutralise(r.reply)}\n\n${SIGNATURE.reply}`,
+      `body=${branded(`**${label}**`)} at \`${short(headSha)}\`: ${neutralise(r.reply)}\n\n${SIGNATURE.reply}`,
     ]);
   }
 }
@@ -1648,7 +1657,7 @@ nothing else. Write in English.`;
   const result = runProvider(deps, prompt, dir, deps.config.answerBudgetUsd);
   if (result.isError || !result.text)
     throw new Error(`The agent did not answer (${result.terminalReason}).`);
-  const body = `${neutralise(result.text)}\n\n<sub>${deps.provider.modelLabel()} · $${result.costUsd.toFixed(2)}</sub>`;
+  const body = `${BRAND}\n\n${neutralise(result.text)}\n\n<sub>${deps.provider.modelLabel()} · $${result.costUsd.toFixed(2)}</sub>`;
   refuseLeak(deps, [body]);
   if (deps.config.dryRun) {
     deps.log(body);
