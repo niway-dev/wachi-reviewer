@@ -108,6 +108,7 @@ skim. A reviewer is worth what it catches at the top of these tables, every run.
 4. **CodeRabbit is quiet but not empty.** Two of its three findings are Medium bugs another
    reviewer also found: `markCopySeen` on #464 (Pullfrog's live catch) and the card lost for the
    session on #466 (Wachiman's live catch).
-5. **Next step:** verify the 15 unverified rows against the code at the head, then rerun the
-   round on the [v2 repositories](https://github.com/niway-dev/kaipu-bench-wachi-v2) to add a run
-   to every column.
+5. **Next step:** verify the 15 unverified rows against the code at the head, then add a run to
+   every column: Pullfrog and CodeRabbit in their
+   [v2](https://github.com/niway-dev/kaipu-bench-pullfrog-v2) [repositories](https://github.com/niway-dev/kaipu-bench-coderabbit-v2),
+   Wachiman on a new `head-r4` branch.

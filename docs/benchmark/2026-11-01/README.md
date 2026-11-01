@@ -10,9 +10,8 @@
   replay findings are **not verified yet**; counts below are what was posted.
 - **Other reviewers on the same five PRs:** Pullfrog and CodeRabbit sections below.
 - **Every finding by severity, with who caught it in how many runs:** [findings-by-pr.md](findings-by-pr.md).
-- **Round 2:** fresh copies for all three reviewers, so Pullfrog's and CodeRabbit's per-repository
-  memory does not leak into the second run:
-  [wachi-v2](https://github.com/niway-dev/kaipu-bench-wachi-v2),
+- **Round 2:** fresh copies for Pullfrog and CodeRabbit, so their per-repository memory does not
+  leak into the second run (Wachiman keeps none; its extra runs stay in kaipu-bench-wachi):
   [pullfrog-v2](https://github.com/niway-dev/kaipu-bench-pullfrog-v2),
   [coderabbit-v2](https://github.com/niway-dev/kaipu-bench-coderabbit-v2) (CodeRabbit auto review
   enabled on every base branch).
