@@ -82,6 +82,30 @@ Zero invalid findings were found in the live set; the replay findings await the 
 4. **Cost drifts up slightly** ($3.28 live → $3.59–$4.17) with the same prompt; the engine's turn
    counts vary run to run, which is the same variance seen in findings.
 
+## Pullfrog, fresh repository, one run (same five PRs)
+
+Opened the same day in [kaipu-bench-pullfrog](https://github.com/niway-dev/kaipu-bench-pullfrog)
+(#1–#5). The run logs say `learnings seeded … existing=no`: no stored memory from kaipu-record.
+Claude Opus 5.5, effort high. Findings not yet verified against the code.
+
+| kaipu PR | Live 10-31 | Replay | Replay findings |
+| --- | --- | --- | --- |
+| #463 | 1 · $2.20 | 2 · $2.05 (44 turns) | Random gap ids break the Share fingerprint (**same as live**); a superseded re-open closes the camera gap too early (**new**; the author fixed this on 10-31 in `8609fab`, which neither live review had flagged) |
+| #464 | 2 · $1.23 | 1 · $1.08 (19) | Pill progressbar hidden from assistive tech (same as live). **`markCopySeen` not found** |
+| #465 | 1 · $1.15 | 1 · $1.05 (21) | Library-detail bottom panel flickers between the first copy finishing and the re-list (new). **`markCopySeen` not found** |
+| #466 | 2 · $1.14 | 1 · $1.38 (28) | Card shadow clipped by the 16 DIP window padding (same as live). **Back re-show not found** |
+| #467 | 1 · $1.96 | 2 · $1.67 (35) | A file dropped on the Library now navigates the Electron window to `file://` (new, no `will-navigate` guard); orphaned CSS comment (Wachi's live finding, with a suggestion block). **Export re-list not found** |
+| **Total** | **7 · $7.68** | **7 · $7.23** | |
+
+**Reading.** Pullfrog is as variable as Wachiman. Of the five live findings that made it look
+decisive on 10-31, the fresh run reproduced **one** (the random ids). The three `markCopySeen` /
+re-list / Back bugs did not reappear, and three new candidates did, two of them potentially
+serious (the gap closed by a superseded re-open, which the author did fix; the drop that navigates
+the window). Whether the loss comes from run-to-run variance or from the missing kaipu learnings
+cannot be separated with one fresh run; the live-plus-replay pair gives Pullfrog 2 of 2 runs on only
+one finding. The conclusion for the design does not change: the flow questions target a class of
+bug both reviewers find *sometimes*; the goal is to find it *every* run.
+
 ## Method notes
 
 - Trigger: `/wachi review` comment by the operator, because a `pull_request` event would run the
@@ -96,8 +120,7 @@ Zero invalid findings were found in the live set; the replay findings await the 
 - Same code path as the automatic review: `/wachi review` routes through `comment()` to the same
   `review()` the `pull_request` job calls (`src/cli.ts:121-122`, `src/engine.ts:1688`), with the
   same budgets and model. The only difference is the trigger.
-- **Effort is not set for Claude Code.** The adapter passes no reasoning-effort setting
-  (`AGENT_REVIEW_REASONING_EFFORT` applies to Codex only), so these runs used Claude Code's
-  default for Opus 5.5. Pullfrog's logs say `effort: high (default)`. Whether the two defaults
-  coincide is not verified; making effort an explicit, logged input is a follow-up before the
-  next comparison.
+- **Effort.** The adapter sets none, so Claude Code's default applied. Per the Claude Code
+  changelog that default is `high` for API-key users since 2.1.94 (the pinned 2.1.304 is later),
+  and Pullfrog's logs say `effort: high (default)`: the two ran at the same level. Depending on a
+  provider default is still wrong; PR #56 makes effort an explicit, logged input.
