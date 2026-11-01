@@ -9,6 +9,13 @@
 - **Status of the findings:** the live findings were verified against the code on 2026-10-31. The
   replay findings are **not verified yet**; counts below are what was posted.
 - **Other reviewers on the same five PRs:** Pullfrog and CodeRabbit sections below.
+- **Every finding by severity, with who caught it in how many runs:** [findings-by-pr.md](findings-by-pr.md).
+- **Round 2:** fresh copies for all three reviewers, so Pullfrog's and CodeRabbit's per-repository
+  memory does not leak into the second run:
+  [wachi-v2](https://github.com/niway-dev/kaipu-bench-wachi-v2),
+  [pullfrog-v2](https://github.com/niway-dev/kaipu-bench-pullfrog-v2),
+  [coderabbit-v2](https://github.com/niway-dev/kaipu-bench-coderabbit-v2) (CodeRabbit auto review
+  enabled on every base branch).
 - **PRs:** round 1 [#1–#5](https://github.com/niway-dev/kaipu-bench-wachi/pulls?q=is%3Apr+label%3Areplay),
   round 2 #6–#10 (`head-r2` branches), round 3 #11–#15 (`head-r3`), each branch on the same
   commit so the engine sees a fresh PR (it does not re-review a head it already marked).
@@ -118,19 +125,21 @@ not visible to the consumer. Reviews took 3–8 minutes each. Findings not yet v
 | kaipu PR | Actionable findings | What |
 | --- | --- | --- |
 | #463 | 0 | Walkthrough only; 21 files processed, 2 ignored by path filters |
-| #464 | 2 | Accessible names of the ready card hide the destination (poster and drag buttons); a second note on the card's action code, supported by its own shell scripts over `ready-copies.ts` and the toast |
+| #464 | 2 | Accessible names of the ready card hide the destination (poster and drag buttons); Show in Finder and drag leave the copy unseen (**Pullfrog's live `markCopySeen` finding**), found with its own `rg` scripts over `ready-copy-card.tsx`, `ready-copies.ts` and the export-ready card |
 | #465 | 0 | Walkthrough only |
 | #466 | 1 | A rejected `loadURL`/`loadFile` is unhandled, `show()` has already returned `true`, the window is never destroyed, so the card is lost for the session (the same path as Wachiman's live #466 finding) |
 | #467 | 0 | Walkthrough only |
 | **Total** | **3** | |
 
 Each review also posts a "Walkthrough" table, pre-merge checks (title and description) and a
-"Prompt for AI Agents" block per finding. None of the five Pullfrog-only live bugs appeared; none
-of the Wachiman stable core (tests, leftovers) appeared either.
+"Prompt for AI Agents" block per finding. One of the five Pullfrog-only live bugs appeared
+(`markCopySeen` on #464, which neither Wachiman run nor the fresh Pullfrog run found); none of
+the Wachiman stable core (tests, leftovers) appeared.
 
 **Reading.** On these PRs CodeRabbit is the quietest of the three: 3 findings against Wachiman's
-15–17 and Pullfrog's 7, with the "Code Graph Analysis" context it advertises. Its one functional
-finding overlaps Wachiman's live catch on #466. One run is one run; the same variance caveat
+15–17 and Pullfrog's 7, with the "Code Graph Analysis" context it advertises. Both of its
+functional findings are Medium bugs another reviewer caught live: `markCopySeen` on #464
+(Pullfrog) and the card lost for the session on #466 (Wachiman). One run is one run; the same variance caveat
 applies, and its skip-by-default on non-default base branches is a configuration fact to record for
 any future replay.
 
