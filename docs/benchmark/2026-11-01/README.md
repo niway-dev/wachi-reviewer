@@ -13,8 +13,7 @@
 - **Round 2:** fresh copies for Pullfrog and CodeRabbit, so their per-repository memory does not
   leak into the second run (Wachiman keeps none; its extra runs stay in kaipu-bench-wachi):
   [pullfrog-v2](https://github.com/niway-dev/kaipu-bench-pullfrog-v2),
-  [coderabbit-v2](https://github.com/niway-dev/kaipu-bench-coderabbit-v2) (CodeRabbit auto review
-  enabled on every base branch).
+  [coderabbit-v2](https://github.com/niway-dev/kaipu-bench-coderabbit-v2).
 - **PRs:** round 1 [#1–#5](https://github.com/niway-dev/kaipu-bench-wachi/pulls?q=is%3Apr+label%3Areplay),
   round 2 #6–#10 (`head-r2` branches), round 3 #11–#15 (`head-r3`), each branch on the same
   commit so the engine sees a fresh PR (it does not re-review a head it already marked).
@@ -116,9 +115,14 @@ bug both reviewers find *sometimes*; the goal is to find it *every* run.
 ## CodeRabbit, fresh repository, one run (same five PRs)
 
 Installed by the owner on [kaipu-bench-coderabbit](https://github.com/niway-dev/kaipu-bench-coderabbit);
-no `.coderabbit.yaml`, default settings. Its automatic review **skipped all five PRs** ("auto reviews
-are disabled on base/target branches other than the default branch"); each was then reviewed once
-with the `@coderabbitai review` command, as its own message suggests. Model not selectable; cost
+no settings changed in its UI. It reads `.coderabbit.yaml` from the pull request's **head
+commit**, so the configuration in force was **kaipu-record's own** file at that commit: review
+profile `chill`, path filters that drop Markdown, lockfiles and generated code, and auto review
+limited to `production` and `master`. That last rule, which also overrides the UI settings, is why
+its automatic review **skipped all five PRs** ("auto reviews are disabled on base/target branches
+other than the default branch"), and it cannot be changed without rewriting the replayed commits.
+Each PR was then reviewed once with the `@coderabbitai review` command, as its own message
+suggests; round 2 does the same. Model not selectable; cost
 not visible to the consumer. Reviews took 3–8 minutes each. Findings not yet verified.
 
 | kaipu PR | Actionable findings | What |
