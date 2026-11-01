@@ -8,6 +8,7 @@
 - **Why:** before judging any improvement, measure how much one run differs from another.
 - **Status of the findings:** the live findings were verified against the code on 2026-10-31. The
   replay findings are **not verified yet**; counts below are what was posted.
+- **Other reviewers on the same five PRs:** Pullfrog and CodeRabbit sections below.
 - **PRs:** round 1 [#1–#5](https://github.com/niway-dev/kaipu-bench-wachi/pulls?q=is%3Apr+label%3Areplay),
   round 2 #6–#10 (`head-r2` branches), round 3 #11–#15 (`head-r3`), each branch on the same
   commit so the engine sees a fresh PR (it does not re-review a head it already marked).
@@ -105,6 +106,33 @@ the window). Whether the loss comes from run-to-run variance or from the missing
 cannot be separated with one fresh run; the live-plus-replay pair gives Pullfrog 2 of 2 runs on only
 one finding. The conclusion for the design does not change: the flow questions target a class of
 bug both reviewers find *sometimes*; the goal is to find it *every* run.
+
+## CodeRabbit, fresh repository, one run (same five PRs)
+
+Installed by the owner on [kaipu-bench-coderabbit](https://github.com/niway-dev/kaipu-bench-coderabbit);
+no `.coderabbit.yaml`, default settings. Its automatic review **skipped all five PRs** ("auto reviews
+are disabled on base/target branches other than the default branch"); each was then reviewed once
+with the `@coderabbitai review` command, as its own message suggests. Model not selectable; cost
+not visible to the consumer. Reviews took 3–8 minutes each. Findings not yet verified.
+
+| kaipu PR | Actionable findings | What |
+| --- | --- | --- |
+| #463 | 0 | Walkthrough only; 21 files processed, 2 ignored by path filters |
+| #464 | 2 | Accessible names of the ready card hide the destination (poster and drag buttons); a second note on the card's action code, supported by its own shell scripts over `ready-copies.ts` and the toast |
+| #465 | 0 | Walkthrough only |
+| #466 | 1 | A rejected `loadURL`/`loadFile` is unhandled, `show()` has already returned `true`, the window is never destroyed, so the card is lost for the session (the same path as Wachiman's live #466 finding) |
+| #467 | 0 | Walkthrough only |
+| **Total** | **3** | |
+
+Each review also posts a "Walkthrough" table, pre-merge checks (title and description) and a
+"Prompt for AI Agents" block per finding. None of the five Pullfrog-only live bugs appeared; none
+of the Wachiman stable core (tests, leftovers) appeared either.
+
+**Reading.** On these PRs CodeRabbit is the quietest of the three: 3 findings against Wachiman's
+15–17 and Pullfrog's 7, with the "Code Graph Analysis" context it advertises. Its one functional
+finding overlaps Wachiman's live catch on #466. One run is one run; the same variance caveat
+applies, and its skip-by-default on non-default base branches is a configuration fact to record for
+any future replay.
 
 ## Method notes
 
