@@ -1,166 +1,248 @@
-# Replay 2026-11-01: Wachiman v1.3.0, three runs on the five field-benchmark PRs
+# Replay benchmark 2026-11-01: Wachiman v1.3.0, Pullfrog and CodeRabbit on five kaipu-record PRs
 
-- **What:** the five kaipu-record PRs of the [2026-10-31 field benchmark](../2026-10-31/README.md),
-  replayed in [kaipu-bench-wachi](https://github.com/niway-dev/kaipu-bench-wachi) at the same
-  base and head commits, reviewed three times each by Wachiman **v1.3.0** (same review prompt as
-  v1.2.0; phase-0 fixes, brand header and aliases only). Claude Opus 5.5, on demand via
-  `/wachi review`, whole PR, all files reviewed in all 15 runs.
-- **Why:** before judging any improvement, measure how much one run differs from another.
-- **Status of the findings:** the live findings were verified against the code on 2026-10-31. The
-  replay findings are **not verified yet**; counts below are what was posted.
-- **Other reviewers on the same five PRs:** Pullfrog and CodeRabbit sections below.
-- **Every finding by severity, with who caught it in how many runs:** [findings-by-pr.md](findings-by-pr.md).
-- **Round 2:** fresh copies for Pullfrog and CodeRabbit, so their per-repository memory does not
-  leak into the second run (Wachiman keeps none; its extra runs stay in kaipu-bench-wachi):
-  [pullfrog-v2](https://github.com/niway-dev/kaipu-bench-pullfrog-v2),
-  [coderabbit-v2](https://github.com/niway-dev/kaipu-bench-coderabbit-v2).
-- **PRs:** round 1 [#1–#5](https://github.com/niway-dev/kaipu-bench-wachi/pulls?q=is%3Apr+label%3Areplay),
-  round 2 #6–#10 (`head-r2` branches), round 3 #11–#15 (`head-r3`), each branch on the same
-  commit so the engine sees a fresh PR (it does not re-review a head it already marked).
-  Raw review bodies and inline comments: [raw/](raw/).
+## In one minute
 
-## Per run
+- **What:** the five kaipu-record PRs of the [2026-10-31 field benchmark](../2026-10-31/README.md)
+  (#463–#467), replayed at their exact commits in fresh public repositories and reviewed again:
+  Wachiman v1.3.0 three times, Pullfrog twice, CodeRabbit twice. 76 findings were posted across
+  the 35 reviews. Each one was checked by reading the code at the head and the later history.
+- **Expected issues:** the 26 findings that were verified on 2026-10-31 and still visible at the
+  head. They come from Wachiman v1.2.0's and Pullfrog's live reviews, so they lean toward what
+  those two look for (17 of them are Wachiman's, mostly test quality). **The fairer measure is the
+  real bugs of severity Medium or higher**, whoever found them. There are 14.
+- **Result:**
 
-| kaipu PR | Live 10-31 (v1.2.0) | Run 1 | Run 2 | Run 3 |
+| | Wachiman v1.3.0 | Pullfrog | CodeRabbit |
+| --- | --- | --- | --- |
+| Runs | 3 | 2 (v1, v2) | 2 (v1, v2) |
+| Cost per run, five PRs | **$3.85** (3.59–4.17) | $7.15 (7.07–7.23) | $0 here (public repo); $24–72 per developer per month on private repos |
+| Findings posted per run | 15–17 | 9–11 | 3–6 |
+| Invalid findings | **0** | 0 | 0 |
+| Expected issues found per run (of 26) | **10–11** | 1–4 | 2–3 |
+| Real Medium+ bugs found per run (of 14) | 0–3 (avg 1.3) | 3–4 (avg **3.5**) | 2–3 (avg 2.5) |
+| Distinct real Medium+ bugs in all its runs | 3 | **5** | 4 |
+| Message quality (0–5, mean) | **4.87** | 4.65 | 4.57 |
+
+- **Reading:**
+  - Wachiman is the cheapest and finds the most issues in total.
+  - Pullfrog finds the most bugs a user would notice: about 2.6 times as many per run as Wachiman,
+    for 1.9 times the price.
+  - CodeRabbit posts little. What it posts is mostly real, and it found two of the three bugs
+    rated High.
+  - **Only three real Medium+ bugs were found in every run of a reviewer**, and none of them by
+    Wachiman: Pullfrog's superseded camera-on (#463) and Library drop (#467), and CodeRabbit's
+    `markCopySeen` (#464), each 2 of 2. Wachiman's best is 2 of 3 (Email listed as Slack, #467).
+  - Three real bugs were found by nobody in any replay. Pullfrog had found all three live.
+- **What it means for Wachiman:**
+  - Its reliable output is test quality and leftovers.
+  - The flow questions in the [design](../../specs/2026-10-31-flow-questions-and-evidence-design.md)
+    target exactly the missing class: follow an action to its effect on the running app.
+  - The baseline is now measured: 1.3 real Medium+ bugs per run, at $3.85.
+
+Per-PR analysis, one issue at a time: [`prs/`](prs/). Raw review bodies and comments: [`raw/`](raw/).
+
+## The runs
+
+| Reviewer | Run | Repository | PRs | Date | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Wachiman v1.3.0 | W-R1 | [kaipu-bench-wachi](https://github.com/niway-dev/kaipu-bench-wachi) | #1–#5 | 11-01 | `/wachi review`; Claude Opus 5.5, effort high (Claude Code default) |
+| Wachiman v1.3.0 | W-R2 | same | #6–#10 (`head-r2`) | 11-01 | same commit, new branch: the engine does not re-review a head it marked |
+| Wachiman v1.3.0 | W-R3 | same | #11–#15 (`head-r3`) | 11-01 | |
+| Pullfrog | PF-v1 | [kaipu-bench-pullfrog](https://github.com/niway-dev/kaipu-bench-pullfrog) | #1–#5 | 11-01 | Opus 5.5, effort high; log says `learnings … existing=no` |
+| Pullfrog | PF-v2 | [kaipu-bench-pullfrog-v2](https://github.com/niway-dev/kaipu-bench-pullfrog-v2) | #2–#6 | 11-01 | fresh repository, so no learnings from v1 |
+| CodeRabbit | CR-v1 | [kaipu-bench-coderabbit](https://github.com/niway-dev/kaipu-bench-coderabbit) | #1–#5 | 11-01 | plan "Advanced", profile `chill`; started by `@coderabbitai review` |
+| CodeRabbit | CR-v2 | [kaipu-bench-coderabbit-v2](https://github.com/niway-dev/kaipu-bench-coderabbit-v2) | #2–#6 | 11-01 | fresh repository |
+
+The live reviews of 2026-10-31 (Wachiman v1.2.0 and Pullfrog on kaipu-record) are not counted as
+runs: they produced the expected set.
+
+## The real bugs (severity Medium or High)
+
+Every real bug of severity Medium or higher on these five PRs, whether expected or found for the
+first time in a replay. "✓" means found, "~" means a run flagged the same code with a different
+or weaker claim, and an empty cell means not found. **Status** gives the author's later fix where
+one exists. A later fix is the strongest evidence a bug is real.
+
+| PR | Bug | Sev. | Diff. | Origin | W-R1 | W-R2 | W-R3 | PF-v1 | PF-v2 | CR-v1 | CR-v2 | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #463 | Camera cannot reopen mid-take, so the face is recorded in no file | High | 5 | expected (W live) | | ✓ | | | | | | fixed `b0f028c` |
+| #463 | A queued camera-on reopens the camera after a newer off: the camera records while the toggle shows off | High | 4 | expected (P re-review) | | | | ~ | ~ | | ✓ | **still open on main** |
+| #463 | The take's first relay feed is ignored, so the face can end up in no file | High | — | new | | | | | | | ✓ | fixed `7155941` |
+| #463 | Random gap ids break Share's "already exported, reuse" | Medium | 5 | expected (P live) | | | | ✓ | | | | fixed `29395c3` |
+| #463 | A superseded camera-on closes the gap too early, so the editor shows a frozen frame | Medium | — | new | | | | ✓ | ✓ | | | fixed `8609fab` |
+| #464 | Show in Finder and drag on the ready card skip `markCopySeen` | Medium | 4 | expected (P live) | | | | | | ✓ | ✓ | fixed `7f28eb97` |
+| #465 | The new Drag handle skips `markCopySeen` | Medium | 4 | expected (P live) | | | | | | | | fixed `e2e6e238` |
+| #465 | When the file probe fails, five of six destination cards show "…" forever | Medium | — | new | | ✓ | | | ✓ | | | **still open on main** |
+| #466 | `show()` returns true before the card renders; a failed load loses the card for the session | Medium | 3 | expected (W live) | | | | | | ✓ | | fixed `1ff66f1b` |
+| #466 | Back re-floats the always-on-top ready card | Medium | 5 | expected (P live) | | | | | | | | fixed `84afb264` |
+| #467 | Export never re-lists the Library when an export finishes | Medium | 5 | expected (P live) | | | | | | | | fixed `3f7a3557` |
+| #467 | A finished Email copy is listed as "Slack · Discord" in Recent exports | Medium | 4 | expected (noticed by hand) | | ✓ | ✓ | | ~ | | | fixed `54a08d37` |
+| #467 | A video dropped on the Library navigates the Electron window to the file (no `will-navigate` guard) | Medium | — | new | | | | ✓ | ✓ | | | open; valid by reading, not run |
+| #467 | Recent exports labels editor exports as destination copies | Medium | — | new | | | | | ✓ | | | likely still open |
+| | **Found in this run** | | | | **0** | **3** | **1** | **3** | **4** | **2** | **3** | |
+
+One more claim is plausible but unconfirmed: on #466, the card's actions may not bring Kaipu to the
+front from another app (PF-v2, rated Medium; it would need a run on macOS to confirm).
+
+What the table shows:
+
+1. **Who finds what.**
+   - Pullfrog finds the action-to-effect class: where the window goes, what the timeline shows,
+     how a label is computed.
+   - CodeRabbit finds main-process failure paths (a load that fails, a feed that never delivers)
+     and the `markCopySeen` contract.
+   - Wachiman found three. All three came from one run (W-R2); the other two runs found one
+     between them.
+2. **Nobody is reliable.** Three rows are ✓ in every run of one reviewer: Pullfrog on the
+   superseded camera-on (#463) and on the Library drop (#467), and CodeRabbit on `markCopySeen`
+   (#464). Everything else comes and goes. Pullfrog's random-ids catch, which made it look
+   decisive live, came back in 1 of 2 replays.
+3. **Three bugs were missed by every replay.** They are `markCopySeen` on #465, Back re-floats on
+   #466 and Export never re-lists on #467. All three need cross-file reasoning, all three were
+   Pullfrog's live catches, and the author fixed all three. They are the hardest test for the
+   next Wachiman version.
+4. **#463 holds all three High bugs, and CodeRabbit v2 found two of them.** One, the camera that
+   reopens after a newer off, is still open on `main`. The other, the ignored first feed, was
+   fixed by the author without any reviewer flagging it live. Wachiman found the third, once in
+   three runs.
+
+## All expected issues, by run
+
+The 26 expected issues that can be caught at the head, by severity. One more expected issue on
+#464, the "For chat" tag on Email copies, was introduced by a later commit, `da6d41b`. It is not
+in the head and is not counted.
+
+| Severity | Expected | W-R1 | W-R2 | W-R3 | PF-v1 | PF-v2 | CR-v1 | CR-v2 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| High | 2 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |
+| Medium | 7 | 0 | 1 | 1 | 1 | 0 | 2 | 1 |
+| Low | 15 | 9 | 6 | 8 | 2 | 1 | 0 | 1 |
+| Info | 2 | 1 | 2 | 2 | 1 | 0 | 0 | 0 |
+| **Total** | **26** | **10** | **10** | **11** | **4** | **1** | **2** | **3** |
+
+By PR (found / expected):
+
+| PR | Expected | W-R1 | W-R2 | W-R3 | PF-v1 | PF-v2 | CR-v1 | CR-v2 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #463 | 6 | 2 | 3 | 2 | 1 | 0 | 0 | 1 |
+| #464 | 3 | 1 | 0 | 1 | 1 | 1 | 1 | 2 |
+| #465 | 3 | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
+| #466 | 4 | 0 | 1 | 0 | 1 | 0 | 1 | 0 |
+| #467 | 10 | 5 | 4 | 6 | 1 | 0 | 0 | 0 |
+
+Wachiman's 10–11 are mostly the Low test-quality issues it found itself live. It finds them
+again run after run: on #465 its two expected tests appear in all three runs, and on #467 the
+two test findings and the CSS comment do too. That is real value, but it is the cheapest part of
+a review to lose.
+
+## Everything posted, by run
+
+| Run | Posted | Valid | Partly valid | Unconfirmed | Invalid | Cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| W-R1 | 15 | 13 | 2 | 0 | 0 | $3.80 |
+| W-R2 | 15 | 15 | 0 | 0 | 0 | $3.59 |
+| W-R3 | 17 | 15 | 2 | 0 | 0 | $4.17 |
+| PF-v1 | 9 | 7 | 1 | 1 | 0 | $7.23 |
+| PF-v2 | 11 | 7 | 3 | 1 | 0 | $7.07 |
+| CR-v1 | 3 | 2 | 1 | 0 | 0 | not billed (public repo) |
+| CR-v2 | 6 | 5 | 1 | 0 | 0 | not billed (public repo) |
+
+"Partly valid" means the code does what the finding says, but the effect is narrower than claimed,
+only a future risk, or contradicted by a documented design choice. No reviewer posted a false
+finding in 35 reviews. Counts include findings written only in a review body, not inline.
+
+New issues (not in the expected set) that each reviewer found, all runs together:
+
+| Reviewer | Distinct new issues | Valid | Of which Medium+ | Partly valid / unconfirmed |
 | --- | --- | --- | --- | --- |
-| #463 | 4 · $0.62 | 3 · $0.63 | 4 · $0.59 | 3 · $0.63 |
-| #464 | 1 · $0.36 | 1 · $0.51 | 2 · $0.49 | 1 · $0.54 |
-| #465 | 2 · $0.48 | 2 · $0.52 | 3 · $0.50 | 4 · $0.57 |
-| #466 | 2 · $0.46 | 3 · $0.58 | 2 · $0.53 | 2 · $0.59 |
-| #467 | 8 · $1.36 | 6 · $1.56 | 4 · $1.48 | 7 · $1.84 |
-| **Total** | **17 · $3.28** | **15 · $3.80** | **15 · $3.59** | **17 · $4.17** |
+| Wachiman | 11 | 8 | 1 (#465 "…" forever) | 3 |
+| Pullfrog | 12 | 7 | 4 | 5 |
+| CodeRabbit | 4 | 2 | 1 (#463 ignored first feed, High) | 2 |
 
-Zero invalid findings were found in the live set; the replay findings await the same check.
+## Cost
 
-## Stability: how often each distinct finding appeared in four runs (live + 3 replays)
+| PR | Size (files, lines changed) | Wachiman, mean of 3 | Pullfrog, mean of 2 | CodeRabbit |
+| --- | --- | --- | --- | --- |
+| #463 | 26, 1,966 | $0.62 | $1.87 | — |
+| #464 | 31, 1,298 | $0.51 | $1.12 | — |
+| #465 | 14, 1,615 | $0.53 | $1.17 | — |
+| #466 | 28, 1,297 | $0.57 | $1.36 | — |
+| #467 | 47, 4,853 | $1.63 | $1.64 | — |
+| **Five PRs** | 146, 11,029 | **$3.85** | **$7.15** | — |
+| Per 1,000 changed lines | | $0.35 | $0.65 | — |
+| Per valid finding | | $0.27 | $1.02 | — |
+| Per real Medium+ bug found | | $2.89 | $2.04 | — |
 
-30 distinct findings across the four runs. 6 appeared every time, 12 appeared once.
+- **Wachiman** reads every changed file in every run, so its cost follows the size of the PR:
+  #467 costs 3 times #464. Pullfrog's cost is nearly flat ($1.12–$1.87), because it decides
+  how far to read.
+- **Per real bug, Pullfrog is cheaper.** Per finding of any kind, Wachiman is four times cheaper.
+  Which number matters depends on what the review is for. A reviewer that misses the bug a user
+  would hit is expensive at any price.
+- **CodeRabbit** does not bill public repositories and shows the consumer no per-review cost. On
+  private repositories it is seat-based: $24, $48 or $72 per developer per month on annual billing
+  (Essentials, Team, Advanced; [pricing page](https://www.coderabbit.ai/pricing), read
+  2026-11-01). These reviews ran on the Advanced plan. A per-PR figure cannot be derived.
+  Wachiman and Pullfrog charge the consumer's own API key per token.
 
-| kaipu PR | Finding | Topic | Runs (of 4) |
-| --- | --- | --- | --- |
-| #463 | Late-frame "dropped and closed" path never tested | tests | **4** |
-| #463 | "off" comment says it waits on the queue; it does not | docs | 3 |
-| #463 | `releaseAll` JSDoc now sits on `releaseWebcam` | docs | 3 (never live) |
-| #463 | **Camera cannot reopen → face recorded nowhere** (fixed live in `b0f028c`) | bug | 2 (live, run 2) |
-| #463 | Hub-reset test name only exercises abort | tests | 2 |
-| #464 | Pill `aria-label` hides the progressbar (Pullfrog's live finding) | a11y | 2 (runs 1, 3) |
-| #464 | Ready cards retired before anyone saw them (list view, filter) | bug | 1 (live) |
-| #464 | Copy loses Edit/Prepare/Tags/Delete while its ready card shows | bug | 1 (run 2) |
-| #464 | "…and forgets it" test never checks the forget | tests | 1 |
-| #465 | Drag test replaces the shared `electronAPI` stub and never restores it | tests | **4** |
-| #465 | "Open in Export" test never checks the absent case | tests | **4** |
-| #465 | Unreadable file leaves every card's size at "…" | bug | 1 (run 2) |
-| #465 | Archive card accessible name reads "Export a copy for Archive copy" | cleanup | 1 |
-| #465 | QA doc says drag the row; only the Drag button drags | docs | 1 |
-| #466 | Docstring says the card closes on leaving the page; the floating window does not | docs | 3 (never live) |
-| #466 | Reused hidden window can flash the previous recording's card | bug | 2 (runs 1, 3) |
-| #466 | `recording-ready:show` accepts any renderer | security | 2 (live, run 2) |
-| #466 | `show()` returns true before the card can paint | bug | 1 (live) |
-| #466 | Test name says Edit-first is ignored; test asserts it closes | tests | 1 |
-| #467 | Library drop test passes either way | tests | **4** |
-| #467 | Sidebar "with and without a video" tests one case | tests | **4** |
-| #467 | Orphaned CSS comment for the removed drop strip | cleanup | **4** |
-| #467 | "Pick from Library" enabled while importing | bug | 3 |
-| #467 | GitHub size bar label omits fits/over | a11y | 2 |
-| #467 | Picker `role="dialog"` without focus management | a11y | 2 |
-| #467 | **Finished Email export listed as "Chat" in Recent exports** | bug | 2 (runs 2, 3; never live; noticed by hand on 10-31) |
-| #467 | Running row shows the title where finished rows show the destination | cleanup | 1 (live) |
-| #467 | Badge "in progress" count untested | tests | 1 (live) |
-| #467 | `EXPORT_ORDER` can silently miss a destination | cleanup | 1 |
-| #467 | CSS comment calls 900×670 the default; it is the minimum | docs | 1 |
+## How well the findings were explained
 
-## Reading
+Each finding that caught an expected issue or a valid new one was scored 0–5, one point each:
 
-1. **One run is not a measurement.** Between any two runs roughly half the findings change. The
-   stable core is test quality and leftovers (6 findings, 4/4); functional bugs come and go: the
-   most serious live catch (#463, face lost) reappeared in one of three replays, and the live-only
-   bugs on #464 and #466 did not reappear at all. Any claim about a Wachiman version needs at least
-   three runs per PR, and should be stated as "appears in k of n runs".
-2. **The Pullfrog-only bugs were never found, in any of 15 runs.** Not `markCopySeen` (#464,
-   #465), not the Back re-show (#466), not the Export re-list (#467), not the random gap ids
-   (#463). This confirms the field-benchmark reading: the gap is the question the prompt does not
-   ask, not luck. The [flow-questions design](../../specs/2026-10-31-flow-questions-and-evidence-design.md)
-   targets exactly these; this table is its baseline.
-3. **The replays found four functional candidates the live run did not** (#464 copy loses its
-   actions, #465 size stuck at "…", #466 previous card flashes, #467 Email listed as Chat). The last
-   one the orchestrating session had noticed by hand on 10-31 without either bot flagging it. All
-   four still need verification against the code before they count.
-4. **Cost drifts up slightly** ($3.28 live → $3.59–$4.17) with the same prompt; the engine's turn
-   counts vary run to run, which is the same variance seen in findings.
+- **Effect:** says what the user or developer will experience.
+- **Location:** gives the exact file and line.
+- **Cause:** explains why, with evidence from the code.
+- **Fix:** gives an actionable fix.
+- **Signal:** the severity is in proportion, and there is no padding.
 
-## Pullfrog, fresh repository, one run (same five PRs)
+| Reviewer | Scored messages | Mean | 5/5 | Where points were lost |
+| --- | --- | --- | --- | --- |
+| Wachiman | 45 | **4.87** | 39 | Signal. It labels comment-only issues "Fix" (the orphaned CSS comment, misplaced JSDoc). It also labelled #463's face loss only "Consider". |
+| Pullfrog | 17 | 4.65 | 13 | It overstates unverified claims: an IMPORTANT banner on "most likely" (#466 bring-to-front) and a panel flip on #465 that the head's loader hides. A suggestion block dropped a line and needed a correction comment. |
+| CodeRabbit | 7 | 4.57 | 4 | Padding: raw dumps of its own shell scripts inside the comment. Under-calling: the ignored first feed, where the face can be lost, rated "Minor". |
 
-Opened the same day in [kaipu-bench-pullfrog](https://github.com/niway-dev/kaipu-bench-pullfrog)
-(#1–#5). The run logs say `learnings seeded … existing=no`: no stored memory from kaipu-record.
-Claude Opus 5.5, effort high. Findings not yet verified against the code.
+All three write well. The messages name the user effect, cite lines and propose a fix. The
+differences are in severity labels and noise, not in clarity. Examples, from
+[`prs/`](prs/):
 
-| kaipu PR | Live 10-31 | Replay | Replay findings |
-| --- | --- | --- | --- |
-| #463 | 1 · $2.20 | 2 · $2.05 (44 turns) | Random gap ids break the Share fingerprint (**same as live**); a superseded re-open closes the camera gap too early (**new**; the author fixed this on 10-31 in `8609fab`, which neither live review had flagged) |
-| #464 | 2 · $1.23 | 1 · $1.08 (19) | Pill progressbar hidden from assistive tech (same as live). **`markCopySeen` not found** |
-| #465 | 1 · $1.15 | 1 · $1.05 (21) | Library-detail bottom panel flickers between the first copy finishing and the re-list (new). **`markCopySeen` not found** |
-| #466 | 2 · $1.14 | 1 · $1.38 (28) | Card shadow clipped by the 16 DIP window padding (same as live). **Back re-show not found** |
-| #467 | 1 · $1.96 | 2 · $1.67 (35) | A file dropped on the Library now navigates the Electron window to `file://` (new, no `will-navigate` guard); orphaned CSS comment (Wachi's live finding, with a suggestion block). **Export re-list not found** |
-| **Total** | **7 · $7.68** | **7 · $7.23** | |
+- Wachiman, #465: "every card except Archive keeps the loading ellipsis forever".
+- Pullfrog, #467: "Electron navigate the window to `file://…/clip.mp4` and replaces the app".
+- CodeRabbit, #463: "can record webcam frames while the camera setting is off".
 
-**Reading.** Pullfrog is as variable as Wachiman. Of the five live findings that made it look
-decisive on 10-31, the fresh run reproduced **one** (the random ids). The three `markCopySeen` /
-re-list / Back bugs did not reappear, and three new candidates did, two of them potentially
-serious (the gap closed by a superseded re-open, which the author did fix; the drop that navigates
-the window). Whether the loss comes from run-to-run variance or from the missing kaipu learnings
-cannot be separated with one fresh run; the live-plus-replay pair gives Pullfrog 2 of 2 runs on only
-one finding. The conclusion for the design does not change: the flow questions target a class of
-bug both reviewers find *sometimes*; the goal is to find it *every* run.
+## Limits and biases
 
-## CodeRabbit, fresh repository, one run (same five PRs)
+- **The expected set favours the live reviewers.** It is the verified output of Wachiman v1.2.0
+  and Pullfrog on 2026-10-31. CodeRabbit had no say in it. That is why the Medium+ table counts
+  new bugs as well.
+- **Verdicts come from reading code, not from running the app.** Five subagents (Claude Sonnet
+  5.5) checked every finding against the code at the head and against `origin/main`, one PR each.
+  Where only a run of the app could confirm a finding, it is marked "by reading" or
+  "unconfirmed". Severities and difficulties are their judgment, using the scale in each
+  [`prs/`](prs/) file.
+- **Small sample.** Five PRs, two or three runs per reviewer. Every per-run figure moves by a
+  bug or two from one run to the next. Read a cell as "found in k of n runs", not as a rate.
+- **CodeRabbit ran with kaipu-record's own configuration.** It reads `.coderabbit.yaml` from the PR's
+  head commit, so the replayed file applied: profile `chill`, Markdown and lockfiles excluded,
+  auto review limited to `production` and `master`. That last rule is why every review was started
+  with `@coderabbitai review`. It cannot be changed without rewriting the replayed commits.
+- **A correction to the 2026-10-31 report.** [`pr-465.md`](../2026-10-31/pr-465.md) says none of its
+  three findings was fixed later. All three were, in `e2e6e238`, which cites the review comments.
 
-Installed by the owner on [kaipu-bench-coderabbit](https://github.com/niway-dev/kaipu-bench-coderabbit);
-no settings changed in its UI. It reads `.coderabbit.yaml` from the pull request's **head
-commit**, so the configuration in force was **kaipu-record's own** file at that commit: review
-profile `chill`, path filters that drop Markdown, lockfiles and generated code, and auto review
-limited to `production` and `master`. That last rule, which also overrides the UI settings, is why
-its automatic review **skipped all five PRs** ("auto reviews are disabled on base/target branches
-other than the default branch"), and it cannot be changed without rewriting the replayed commits.
-Each PR was then reviewed once with the `@coderabbitai review` command, as its own message
-suggests; round 2 does the same. Model not selectable; cost
-not visible to the consumer. Reviews took 3–8 minutes each. Findings not yet verified.
+## Method
 
-| kaipu PR | Actionable findings | What |
-| --- | --- | --- |
-| #463 | 0 | Walkthrough only; 21 files processed, 2 ignored by path filters |
-| #464 | 2 | Accessible names of the ready card hide the destination (poster and drag buttons); Show in Finder and drag leave the copy unseen (**Pullfrog's live `markCopySeen` finding**), found with its own `rg` scripts over `ready-copy-card.tsx`, `ready-copies.ts` and the export-ready card |
-| #465 | 0 | Walkthrough only |
-| #466 | 1 | A rejected `loadURL`/`loadFile` is unhandled, `show()` has already returned `true`, the window is never destroyed, so the card is lost for the session (the same path as Wachiman's live #466 finding) |
-| #467 | 0 | Walkthrough only |
-| **Total** | **3** | |
-
-Each review also posts a "Walkthrough" table, pre-merge checks (title and description) and a
-"Prompt for AI Agents" block per finding. One of the five Pullfrog-only live bugs appeared
-(`markCopySeen` on #464, which neither Wachiman run nor the fresh Pullfrog run found); none of
-the Wachiman stable core (tests, leftovers) appeared.
-
-**Reading.** On these PRs CodeRabbit is the quietest of the three: 3 findings against Wachiman's
-15–17 and Pullfrog's 7, with the "Code Graph Analysis" context it advertises. Both of its
-functional findings are Medium bugs another reviewer caught live: `markCopySeen` on #464
-(Pullfrog) and the card lost for the session on #466 (Wachiman). One run is one run; the same variance caveat
-applies, and its skip-by-default on non-default base branches is a configuration fact to record for
-any future replay.
-
-## Method notes
-
-- Trigger: `/wachi review` comment by the operator, because a `pull_request` event would run the
-  replayed commits' own `agent-review.yml` (v1.2.0), not the benchmark workflow on `main`. That
-  workflow and `pr-checks.yml` are disabled in the repository's Actions settings.
-- Repeat runs: the engine skips a head it has already marked, so runs 2 and 3 use branches
-  `replay/pr-<n>/head-r2` and `head-r3` pointing at the same commit, each in its own PR.
-- v1.3.0 reads the focus file, `CLAUDE.md` and `AGENTS.md` from the base commit; in these PRs
-  they match the head's, so this should not change the prompt.
-- Scripts: [`replay/open-replays.sh`](../replay/open-replays.sh), [`replay/push-rounds.sh`](../replay/push-rounds.sh),
-  [`replay/open-rounds.sh`](../replay/open-rounds.sh).
-- Same code path as the automatic review: `/wachi review` routes through `comment()` to the same
-  `review()` the `pull_request` job calls (`src/cli.ts:121-122`, `src/engine.ts:1688`), with the
-  same budgets and model. The only difference is the trigger.
-- **Effort.** The adapter sets none, so Claude Code's default applied. Per the Claude Code
-  changelog that default is `high` for API-key users since 2.1.94 (the pinned 2.1.304 is later),
-  and Pullfrog's logs say `effort: high (default)`: the two ran at the same level. Depending on a
-  provider default is still wrong; PR #56 makes effort an explicit, logged input.
+- Every replay branch is a real kaipu-record commit, so each PR's diff is byte-identical to the
+  original. Each repository's `main` holds only a README and the reviewer's configuration.
+  Branches and SHAs: [kaipu-bench-wachi README](https://github.com/niway-dev/kaipu-bench-wachi).
+- Wachiman was started with `/wachi review`. A `pull_request` event would have run the replayed
+  commits' own `agent-review.yml` (v1.2.0), and that workflow and `pr-checks.yml` are disabled
+  in every benchmark repository. `/wachi review` goes through the same `review()` as the
+  automatic job, with the same budgets and model (`src/cli.ts:121-122`, `src/engine.ts:1688`).
+- Pullfrog and CodeRabbit keep per-repository memory, so their second runs are in fresh
+  repositories. Wachiman keeps none, so its repeat runs use `head-r2`/`head-r3` branches on the
+  same commit.
+- **Effort:** Wachiman's adapter sets none, so Claude Code's default applied, which is `high` for
+  API-key users since 2.1.94. Pullfrog logs `effort: high (default)`. PR #56 makes effort an
+  explicit, logged input.
+- Costs: Wachiman's from its review footers; Pullfrog's from the usage table in each run log
+  ([`raw/pullfrog-v2-costs.txt`](raw/pullfrog-v2-costs.txt); v1 from its tool-call logs).
+- Scripts: [`../replay/`](../replay/).
