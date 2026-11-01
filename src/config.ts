@@ -1,5 +1,6 @@
 /** The `AGENT_REVIEW_*` settings, read once, with the old `CLAUDE_REVIEW_*` names as a fallback. */
 import { DEFAULT_MODELS } from "./providers";
+import { DEFAULT_EFFORT, EFFORTS, type Effort } from "./providers/types";
 
 export class UsageError extends Error {}
 
@@ -16,8 +17,11 @@ export interface EngineConfig {
   provider: string;
   /** `AGENT_REVIEW_PRICE_PER_MTOK`: "input,cached_input,output" USD per million tokens, for a Codex model without a built-in price. */
   pricePerMTok?: string;
-  /** `AGENT_REVIEW_REASONING_EFFORT`: passed to Codex as `model_reasoning_effort`; unset keeps the model's default. */
-  reasoningEffort?: string;
+  /**
+   * `AGENT_REVIEW_EFFORT`: the reasoning effort, always explicit so a CLI default change cannot
+   * alter reviews. Passed as `--effort` (Claude Code) or `model_reasoning_effort` (Codex).
+   */
+  effort: Effort;
   mention: string;
   /** Login allowed to command the tool. `comment` refuses to run when it is empty or a placeholder. */
   operator: string;
@@ -42,6 +46,30 @@ export function readSetting(env: Env, name: string, warn: (line: string) => void
   return undefined;
 }
 
+/**
+ * `AGENT_REVIEW_EFFORT`, else the deprecated `AGENT_REVIEW_REASONING_EFFORT` (Codex only before),
+ * else the default. An unknown value is a configuration error: a silent fallback would run the
+ * review at an effort nobody chose.
+ */
+function readEffort(env: Env, warn: (line: string) => void): Effort {
+  const current = readSetting(env, "EFFORT", warn);
+  const old = readSetting(env, "REASONING_EFFORT", () => {});
+  let name = "AGENT_REVIEW_EFFORT";
+  let raw = current;
+  if (old !== undefined) {
+    warn("AGENT_REVIEW_REASONING_EFFORT is deprecated; use AGENT_REVIEW_EFFORT.");
+    if (raw === undefined) {
+      raw = old;
+      name = "AGENT_REVIEW_REASONING_EFFORT";
+    }
+  }
+  if (raw === undefined) return DEFAULT_EFFORT;
+  if (!(EFFORTS as readonly string[]).includes(raw)) {
+    throw new UsageError(`${name} must be one of ${EFFORTS.join(", ")}, got "${raw}".`);
+  }
+  return raw as Effort;
+}
+
 export function loadConfig(env: Env, warn: (line: string) => void = console.error): EngineConfig {
   const get = (name: string) => readSetting(env, name, warn);
   const number = (name: string, fallback: number, integer = false) => {
@@ -53,6 +81,7 @@ export function loadConfig(env: Env, warn: (line: string) => void = console.erro
     }
     return value;
   };
+  const effort = readEffort(env, warn);
   const provider = get("PROVIDER") ?? "claude-code";
   return {
     budgetUsd: number("BUDGET_USD", 3),
@@ -64,7 +93,7 @@ export function loadConfig(env: Env, warn: (line: string) => void = console.erro
     model: get("MODEL") ?? DEFAULT_MODELS[provider as keyof typeof DEFAULT_MODELS] ?? DEFAULT_MODELS["claude-code"],
     provider,
     pricePerMTok: get("PRICE_PER_MTOK"),
-    reasoningEffort: get("REASONING_EFFORT"),
+    effort,
     mention: get("MENTION") ?? "/wachi",
     operator: get("OPERATOR") ?? "",
     exclude: (get("EXCLUDE") ?? "").split(",").filter(Boolean),

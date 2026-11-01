@@ -78,7 +78,8 @@ Settings, all optional:
 | `AGENT_REVIEW_MODEL` | `claude-sonnet-5-5` for `claude-code`, `gpt-6.1-sol` for `codex` | The reviewer model, passed to the provider |
 | `AGENT_REVIEW_PROVIDER` | `claude-code` | Which adapter runs the agent: `claude-code` (docs/providers/claude-code.md) or `codex` (docs/providers/codex.md). Any other value is a usage error that lists the accepted ones |
 | `AGENT_REVIEW_PRICE_PER_MTOK` | unset | `codex` only: `"input,cached_input,output"` in USD per million tokens, for a model without a built-in price |
-| `AGENT_REVIEW_REASONING_EFFORT` | unset | `codex` only: passed as `model_reasoning_effort` (for example `high`); unset keeps the model's default |
+| `AGENT_REVIEW_EFFORT` | `high` | Reasoning effort: `low`, `medium`, `high`, `xhigh` or `max`. Passed as `--effort` (Claude Code) or `model_reasoning_effort` (Codex), never translated, so pick a value your provider and model accept. An unknown value stops the run at startup. Printed in every review footer |
+| `AGENT_REVIEW_REASONING_EFFORT` | unset | Deprecated alias of `AGENT_REVIEW_EFFORT` (logs a warning); `AGENT_REVIEW_EFFORT` wins when both are set |
 | `AGENT_REVIEW_MENTION` | `/wachi` | The keyword `comment` looks for. `@agent-review` and `@claude` always work as aliases. The keyword must start a word, so `docs/wachi` is not a command |
 | `AGENT_REVIEW_OPERATOR` | unset | The login allowed to command the tool. `comment` requires it: empty, `your-github-login` and anything starting with `EDIT` are refused. The workflow checks it first; the CLI checks it again when the comment author is known (see below) |
 | `AGENT_REVIEW_EXCLUDE` | unset | Extra globs to drop, comma-separated, on top of lockfiles, build output and generated files. The reusable workflow has no input for it; it works only in the copy-the-files install |

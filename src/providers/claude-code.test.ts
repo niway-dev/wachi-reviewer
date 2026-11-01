@@ -19,6 +19,7 @@ describe("buildClaudeArgs", () => {
     addDirs: ["/d"],
     budgetUsd: 0.6,
     model: "m",
+    effort: "xhigh",
     settings: "/s/claude-code.settings.json",
     tools: ["read", "glob", "grep"],
     schema: { type: "object" },
@@ -34,6 +35,7 @@ describe("buildClaudeArgs", () => {
     expect(after("--allowedTools")).toBe("Read,Glob,Grep");
     expect(after("--disallowedTools")).toContain("Bash");
     expect(after("--disallowedTools")).toContain("Read(//proc/**)");
+    expect(after("--effort")).toBe("xhigh");
     expect(after("--max-budget-usd")).toBe("0.6");
     expect(after("--output-format")).toBe("json");
     expect(after("--json-schema")).toBe('{"type":"object"}');
@@ -50,6 +52,7 @@ describe("buildClaudeArgs", () => {
       addDirs: [],
       budgetUsd: 1,
       model: "m",
+      effort: "high",
       settings: "s",
       tools: ["read"],
       prompt: "hello",
@@ -194,12 +197,12 @@ printf '{"is_error":false,"subtype":"success","result":"cwd=%s ls=[%s] args=%s"}
 
 describe("getProvider", () => {
   test("returns the Claude Code adapter", () => {
-    expect(getProvider("claude-code", { model: "m", dryRun: true }).name).toBe("claude-code");
+    expect(getProvider("claude-code", { model: "m", dryRun: true, effort: "high" }).name).toBe("claude-code");
   });
 
   test("an unknown name is a usage error that lists the accepted values", () => {
-    expect(() => getProvider("gpt", { model: "m", dryRun: false })).toThrow(UnknownProviderError);
-    expect(() => getProvider("gpt", { model: "m", dryRun: false })).toThrow(PROVIDER_NAMES.join(", "));
+    expect(() => getProvider("gpt", { model: "m", dryRun: false, effort: "high" })).toThrow(UnknownProviderError);
+    expect(() => getProvider("gpt", { model: "m", dryRun: false, effort: "high" })).toThrow(PROVIDER_NAMES.join(", "));
   });
 });
 

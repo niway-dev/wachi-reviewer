@@ -1,6 +1,6 @@
 import { ClaudeCodeProvider } from "./claude-code";
 import { CodexProvider } from "./codex";
-import type { ProviderAdapter } from "./types";
+import type { Effort, ProviderAdapter } from "./types";
 
 export type { NeutralTool, ProviderAdapter, ProviderRequest, ProviderResult } from "./types";
 
@@ -17,17 +17,17 @@ export class UnknownProviderError extends Error {}
 
 export function getProvider(
   name: string,
-  options: { model: string; dryRun: boolean; pricePerMTok?: string; reasoningEffort?: string },
+  options: { model: string; dryRun: boolean; pricePerMTok?: string; effort: Effort },
 ): ProviderAdapter {
   if (name === "claude-code") {
-    return new ClaudeCodeProvider({ model: options.model, requireApiKey: !options.dryRun });
+    return new ClaudeCodeProvider({ model: options.model, requireApiKey: !options.dryRun, effort: options.effort });
   }
   if (name === "codex") {
     return new CodexProvider({
       model: options.model,
       requireApiKey: !options.dryRun,
       priceOverride: options.pricePerMTok,
-      reasoningEffort: options.reasoningEffort,
+      reasoningEffort: options.effort,
       // A dry run uses the machine's own Codex login, like the Claude Code adapter's dry run.
       codexHome: options.dryRun ? (process.env.CODEX_HOME ?? `${process.env.HOME}/.codex`) : undefined,
     });

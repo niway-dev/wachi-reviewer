@@ -81,8 +81,9 @@ with Codex 0.153.4 and a ChatGPT account, `gpt-6.1-sol` and `gpt-6-sol` were ref
 when using Codex with a ChatGPT account"), and `gpt-5.6-sol` worked. An API key is expected to
 serve them; this is part of the CI check above.
 
-`AGENT_REVIEW_REASONING_EFFORT` sets `model_reasoning_effort` (for example `high`); unset keeps the
-model's default.
+`AGENT_REVIEW_EFFORT` (default `high`) sets `model_reasoning_effort`. It is passed through as is:
+Codex may refuse `xhigh` or `max` for some models, so choose a value the model accepts.
+`AGENT_REVIEW_REASONING_EFFORT` still works as a deprecated alias.
 
 ## Verified run
 

@@ -18,11 +18,33 @@ describe("loadConfig", () => {
       dryRun: false,
       model: "claude-sonnet-5-5",
       provider: "claude-code",
+      effort: "high",
       mention: "/wachi",
       operator: "",
       exclude: [],
     });
     expect(warnings).toEqual([]);
+  });
+
+  test("reads AGENT_REVIEW_EFFORT and accepts every documented level", () => {
+    for (const effort of ["low", "medium", "high", "xhigh", "max"]) {
+      expect(load({ AGENT_REVIEW_EFFORT: effort }).config.effort).toBe(effort);
+    }
+  });
+
+  test("rejects an unknown effort instead of falling back", () => {
+    expect(() => load({ AGENT_REVIEW_EFFORT: "ultra" })).toThrow(UsageError);
+    expect(() => load({ AGENT_REVIEW_EFFORT: "ultra" })).toThrow("low, medium, high, xhigh, max");
+    expect(() => load({ AGENT_REVIEW_REASONING_EFFORT: "turbo" })).toThrow("AGENT_REVIEW_REASONING_EFFORT");
+  });
+
+  test("keeps AGENT_REVIEW_REASONING_EFFORT as a deprecated alias that loses to AGENT_REVIEW_EFFORT", () => {
+    const alias = load({ AGENT_REVIEW_REASONING_EFFORT: "low" });
+    expect(alias.config.effort).toBe("low");
+    expect(alias.warnings.some((w) => w.includes("deprecated"))).toBe(true);
+    const both = load({ AGENT_REVIEW_REASONING_EFFORT: "low", AGENT_REVIEW_EFFORT: "max" });
+    expect(both.config.effort).toBe("max");
+    expect(both.warnings.some((w) => w.includes("AGENT_REVIEW_REASONING_EFFORT is deprecated"))).toBe(true);
   });
 
   test("reads the AGENT_REVIEW_ names", () => {
