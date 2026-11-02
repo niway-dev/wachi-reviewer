@@ -252,8 +252,11 @@ It is shown after the title, for example `🟠🐛 **Fix · bug: Face is lost (c
 | `low` | Plausible, not established |
 
 A `low` confidence finding at `fix` or above is posted with the topic `question`, worded as a
-question to the author. The engine does not enforce this; it is a rule in the prompt, and
-[precision](precision.md) tabulates verdicts by confidence so the rule can be checked. A finding
+question to the author. The prompt asks for it and the engine enforces it: a `low` confidence
+finding at `blocker` or `fix` that the model left under another topic is rewritten to `question`
+(severity, title and body unchanged) and counted in the job log; see
+[review-policy.md](review-policy.md). [precision](precision.md) tabulates verdicts by confidence
+so the rule can be checked. A finding
 without a confidence (the engine's own notices, reviews from before the field existed) shows none. The decision
 is in the [flow questions spec](specs/2026-10-31-flow-questions-and-evidence-design.md), decision 9.
 

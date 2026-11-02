@@ -10,6 +10,7 @@ import {
   lastEngineMarker,
   rebaseDelta,
   review,
+  SIGNATURE,
   type Deps,
   type GhFn,
   type ReviewOutput,
@@ -426,6 +427,141 @@ describe("flow questions and contracts against a fake provider", () => {
     );
     expect(provider.requests).toHaveLength(2);
     expect(posted?.body).toContain("What the change connects to (2 closed, 0 open)");
+  });
+});
+
+// Issue #17: "Inline comments are posted as extra empty-body reviews". The review the engine posts
+// is one POST to /reviews that carries the body and every inline comment. The empty-body review
+// objects seen on a pull request come from thread replies: GitHub gives each reply made through
+// the replies endpoint a review of its own, with no body (observed on niway-dev/kaipu-record#467,
+// where each of nine replies has its own empty review and the 8 findings share one review).
+describe("one review carries its inline comments (issue #17)", () => {
+  const THREAD = (id: number, path: string) => ({
+    isResolved: false,
+    path,
+    line: 2,
+    comments: {
+      nodes: [
+        {
+          databaseId: id,
+          author: { login: "github-actions" },
+          authorAssociation: "NONE",
+          body: `🟠🐛 **Fix · bug: earlier**\n\nOld finding.\n\n${SIGNATURE.finding}`,
+          createdAt: "2026-10-30T00:00:00Z",
+        },
+      ],
+    },
+  });
+
+  const PRIOR = `👮 **Wachiman** · review of the whole pull request, at \`old1111\`: all 4 files reviewed.\n\n<sub>x</sub>\n\n<!-- wachi:review -->\n\n<!-- agent-review sha=old1111111 -->\n\n<!-- wachi:attempt id=11111111-1111-1111-1111-111111111111 -->`;
+
+  test("three findings and two thread replies: one POST to /reviews with all three comments, replies on the replies endpoint", () => {
+    const posts: { url: string; payload: { body?: string; comments?: unknown[] } }[] = [];
+    const base = fakeGh({});
+    const gh: GhFn = (args, input) => {
+      const line = args.join(" ");
+      if (line.startsWith("api graphql"))
+        return JSON.stringify({
+          data: { repository: { pullRequest: { reviewThreads: { nodes: [THREAD(101, MANAGER), THREAD(102, STORE)] } } } },
+        });
+      // A re-review: an earlier review of this pull request exists, and the head moved past it.
+      if (line.includes("/pulls/7/reviews") && !args.includes("POST"))
+        return JSON.stringify({ body: PRIOR, submitted_at: "2026-10-30T00:00:00Z" });
+      // The earlier review covered nothing, so every file counts as changed since it.
+      if (line.includes(`compare/${BASE}...`)) return JSON.stringify({ status: "ahead", files: [] });
+      if (line.includes("compare/")) return JSON.stringify({ status: "ahead", files: prFiles });
+      if (args.includes("POST")) {
+        posts.push({ url: args.find((a) => a.startsWith("repos/")) ?? line, payload: JSON.parse(input ?? "{}") });
+        return "{}";
+      }
+      return base(args, input);
+    };
+    const provider = new FakeProvider([
+      () => ({
+        structuredOutput: out({
+          files_reviewed: [MANAGER, STORE, GUIDE, LOGO],
+          files_skipped: [{ path: LOGO, reason: "binary" }],
+          findings: [
+            { path: MANAGER, line: 2, severity: "fix", topic: "bug", confidence: "high", title: "A", body: "a" },
+            { path: MANAGER, line: 3, severity: "consider", topic: "cleanup", confidence: "high", title: "B", body: "b" },
+            { path: STORE, line: 1, severity: "fix", topic: "tests", confidence: "high", title: "C", body: "c" },
+          ],
+          thread_replies: [
+            { comment_id: 101, status: "addressed", reply: "Fixed." },
+            { comment_id: 102, status: "open", reply: "Still there." },
+          ],
+          summary: "ok",
+        }),
+      }),
+    ]);
+    const deps: Deps = { gh, provider, config: loadConfig({}), log: () => {}, warn: () => {} };
+    review(deps, "o/r", 7, []);
+
+    const reviews = posts.filter((p) => p.url.endsWith("/pulls/7/reviews"));
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0].payload.body).toContain("3 on their lines");
+    expect(reviews[0].payload.comments).toHaveLength(3);
+    const replies = posts.filter((p) => p.url.includes("/comments/"));
+    expect(replies.map((p) => p.url)).toEqual([
+      "repos/o/r/pulls/7/comments/101/replies",
+      "repos/o/r/pulls/7/comments/102/replies",
+    ]);
+    // Nothing else is posted: no per-finding review, no empty review from the engine itself.
+    expect(posts).toHaveLength(3);
+  });
+});
+
+describe("the confidence rule through review()", () => {
+  test("a low-confidence fix is posted as a question and the run logs how many were rewritten", () => {
+    const posted: { review?: { body: string; comments: { path: string; line: number; body: string }[] } } = {};
+    const logs: string[] = [];
+    const provider = new FakeProvider([
+      () => ({
+        structuredOutput: out({
+          files_reviewed: [MANAGER, STORE, GUIDE, LOGO],
+          files_skipped: [{ path: LOGO, reason: "binary" }],
+          findings: [
+            { path: MANAGER, line: 2, severity: "fix", topic: "bug", confidence: "low", title: "Maybe leaks", body: "Is the handle closed on error?" },
+            { path: MANAGER, line: 3, severity: "fix", topic: "bug", confidence: "high", title: "Off by one", body: "Fails for an empty list." },
+            { path: STORE, line: 1, severity: "consider", topic: "cleanup", confidence: "low", title: "Name", body: "Rename?" },
+          ],
+          summary: "ok",
+        }),
+      }),
+    ]);
+    const deps: Deps = {
+      gh: fakeGh(posted),
+      provider,
+      config: loadConfig({}),
+      log: (l) => logs.push(l),
+      warn: () => {},
+    };
+    review(deps, "o/r", 7, []);
+    const heads = (posted.review?.comments ?? []).map((c) => c.body.split("\n")[0]);
+    expect(heads).toContain("👮 **Wachiman** · 🟠❓ **Fix · question: Maybe leaks (confidence low)**");
+    expect(heads).toContain("👮 **Wachiman** · 🟠🐛 **Fix · bug: Off by one (confidence high)**");
+    expect(heads).toContain("👮 **Wachiman** · 🟡🧹 **Consider · cleanup: Name (confidence low)**");
+    expect(posted.review?.comments.find((c) => c.line === 2)?.body).toContain("Is the handle closed on error?");
+    expect(logs.filter((l) => l.startsWith("Confidence rule:"))).toEqual([
+      "Confidence rule: 1 finding(s) with low confidence at severity fix or above posted as questions.",
+    ]);
+  });
+
+  test("logs nothing when no finding needed the rule", () => {
+    const posted: { review?: { body: string; comments: unknown[] } } = {};
+    const logs: string[] = [];
+    const provider = new FakeProvider([
+      () => ({
+        structuredOutput: out({
+          files_reviewed: [MANAGER, STORE, GUIDE, LOGO],
+          files_skipped: [{ path: LOGO, reason: "binary" }],
+          findings: [{ path: MANAGER, line: 2, severity: "fix", topic: "bug", confidence: "medium", title: "T", body: "B" }],
+          summary: "ok",
+        }),
+      }),
+    ]);
+    review({ gh: fakeGh(posted), provider, config: loadConfig({}), log: (l) => logs.push(l), warn: () => {} }, "o/r", 7, []);
+    expect(logs.some((l) => l.startsWith("Confidence rule:"))).toBe(false);
   });
 });
 

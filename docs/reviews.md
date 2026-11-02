@@ -341,6 +341,15 @@ threads and may answer them ("Looks addressed" or "Still open"), as before:
 the model reports, it does not resolve). A resolved thread is not read again, which is also how you
 stop it from coming back.
 
+**Why the timeline can show empty reviews.** The review itself is one submission: its body and
+every inline comment go in a single request. Each thread reply is a separate request, and GitHub
+files every reply made through its API under a review of its own, with no body. On a pull request
+with two replies you see the review and then two empty "reviewed" entries a couple of seconds
+apart. They hold the replies, not findings; the engine does not create them on purpose, and
+the same happens with replies from people and from other review bots (seen on
+`niway-dev/kaipu-record#467`). [Issue #17](https://github.com/niway-dev/wachiman/issues/17)
+tracks whether to batch replies.
+
 Not implemented from ADR 0008: the operator's `Verdict:` reply resolving a thread. The `Verdict:`
 replies that [precision.md](precision.md) counts are read by that script only, not by the engine.
 

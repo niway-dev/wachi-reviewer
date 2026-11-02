@@ -63,7 +63,7 @@ Above all of them sit the engine's own rules, which the instructions are told ne
   in a comment, docstring, name or document is never a Fix; a silent loss of data or a silently
   wrong result is a Fix or higher even when rare),
 - the **confidence definition** (`high`, `medium`, `low`, separate from severity; a `low`
-  confidence finding at Fix or above is posted as a question),
+  confidence finding at Fix or above is posted as a question, which the engine also enforces),
 - the **flow questions** (what a new action or call changes, what the existing equivalent path
   does, how the result reaches the user, what happens when background work finishes or the user
   goes Back, what happens when a new async call, handler, window or file read fails), and the
@@ -72,16 +72,27 @@ Above all of them sit the engine's own rules, which the instructions are told ne
   only for the failure shown; check all callers of a shared contract),
 - the **output format**, a fixed schema.
 
-Only two parts of that are held by code:
+Only three parts of that are held by code:
 
 - **Held by the schema:** the label set. The output schema allows four severities, nine topics
   and three confidence levels ([reviews.md](reviews.md)), and the engine's label tables have no
   others. A rule saying "use severity `critical`" or "add a `style` topic" cannot work.
+- **Held by the engine, for confidence:** after the batches are merged, a finding with `low`
+  confidence at Blocker or Fix whose topic is not already `question` is rewritten to topic
+  `question`, whatever the model chose. Only the topic changes. The severity stays, because a
+  question takes the severity of its worst plausible answer
+  ([ADR 0003](adr/0003-two-axis-finding-labels.md)); the title and body are not edited, and the
+  label already shows `(confidence low)`, so the text carries no "downgraded" note. The job log
+  says how many findings were rewritten (`Confidence rule: N finding(s) …`). The rule never
+  touches `medium` or `high` confidence, a finding below Fix, a finding with no confidence, or a
+  finding that is already a question. It changes what the finding is called, not how it is worded:
+  a rewritten finding may still read as a statement, because the model wrote it for another
+  topic. The rewrite runs before findings on one line and topic are deduplicated, so it can merge
+  with a question already on that line (the higher severity is kept).
 - **Held by the engine, for contracts:** each answer to a flow question has the right shape, and
   every `file:line` it cites exists in the checked-out head. That checks existence, not truth: an
   answer can cite real lines and still be wrong, and the engine does not judge it.
-- **Not enforced:** everything else, including that a `low` confidence finding at Fix or above is
-  posted as a question. The prompt tells the model that instructions do not change
+- **Not enforced:** everything else. The prompt tells the model that instructions do not change
   the severity tests or the evidence rules, but no code checks that the model obeys. A rule such
   as "never report anything about tests" is an instruction the model may follow; the engine does
   not verify it, and it does not mark the review when the model followed it. The proposal that

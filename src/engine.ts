@@ -403,6 +403,27 @@ export function dedupeFindings(findings: Finding[]): Finding[] {
 }
 
 /**
+ * The confidence rule, held by code: a finding the model is only "low" confidence about, at
+ * "fix" or above, is posted as a question to the author (spec 2026-10-31, decision 9; the same
+ * rule is in `RULES`). Only the topic changes, to "question". The severity stays: ADR 0003 gives
+ * a question the severity of its worst plausible answer, so the author still sees how much is at
+ * stake if the answer is yes. Title and body are not touched, and the label already shows
+ * "(confidence low)", so nothing is added to the text. A finding that is already a question, one
+ * below "fix", and any "medium" or "high" confidence finding are returned as they are. Pure; the
+ * count is for the caller to log.
+ */
+export function enforceConfidenceRule(findings: Finding[]): { findings: Finding[]; rewritten: number } {
+  let rewritten = 0;
+  const out = findings.map((f): Finding => {
+    const demanding = f.severity === "blocker" || f.severity === "fix";
+    if (f.confidence !== "low" || !demanding || f.topic === "question") return f;
+    rewritten++;
+    return { ...f, topic: "question" };
+  });
+  return { findings: out, rewritten };
+}
+
+/**
  * The notice that a pull request edits a decision record, one per changed file under a
  * `docs/adr/` directory at any depth. It comes from the paths, not from the model: it is free,
  * worded the same every time, and as "info" it never opens a thread the author must answer.
@@ -1933,10 +1954,16 @@ export function review(deps: Deps, repo: string, pr: number, words: string[]) {
     throw new Error("The agent did not return a review for any batch.");
   }
   const merged = mergeOutputs(parts);
+  const ruled = enforceConfidenceRule(merged.findings);
+  if (ruled.rewritten > 0)
+    deps.log(
+      `Confidence rule: ${ruled.rewritten} finding(s) with low confidence at severity fix or above posted as questions.`,
+    );
   // The engine's notices come first so that, on a tie with the model's own, its wording is kept.
+  // The rule runs before this pass so that a rewritten question and another question on its line collapse.
   merged.findings = dedupeFindings([
     ...adrNotices(kept.map((f) => f.filename)),
-    ...merged.findings,
+    ...ruled.findings,
   ]);
   for (const path of notRun)
     merged.files_skipped.push({ path, reason: "not reached: the pull request's budget was spent" });

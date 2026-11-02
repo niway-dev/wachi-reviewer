@@ -115,7 +115,30 @@ Design decisions are recorded as ADRs in [docs/adr/](docs/adr/), starting with
 
 ## License
 
-GNU Affero General Public License v3.0 only. See [LICENSE](LICENSE).
+Wachiman is **source available**, not open source. It is licensed under the
+[Functional Source License, Version 1.1, ALv2 Future License](LICENSE) (`FSL-1.1-ALv2`), a
+[Fair Source](https://fair.io/) license. Copyright 2026 NIWAY.
+
+- **You may** use it for any purpose except a Competing Use: run it on your own repositories and
+  in your company, read and modify it, fork it for internal use, use it for non-commercial
+  education and research, and use it to give professional services to a client who may also
+  use it.
+- **You may not**, without a commercial license, make it available to others as a commercial
+  product or service that does what Wachiman does, hosted or packaged.
+- **Each version becomes Apache 2.0 two years after it is made available.** The license says so
+  under "Grant of Future License".
+- **Commercial license:** write to contact@niway.com. There is no price list.
+- **Name and logo:** the license grants no rights to them. See [TRADEMARKS.md](TRADEMARKS.md).
+
+### Licensing history
+
+Everything published before 2026-11-01, including every release up to and including `v1.3.0`,
+was published under the GNU Affero General Public License v3 and remains available under it. The
+`LICENSE` file inside each release tag says which license that release carries. The reason for the
+change is recorded in [ADR 0013](docs/adr/0013-license-fsl-1-1-alv2.md).
+
+Quoted third-party text under `docs/benchmark/` belongs to its authors and is reproduced for
+research and comparison; it is not covered by the license above.
 
 ## Commit messages
 
