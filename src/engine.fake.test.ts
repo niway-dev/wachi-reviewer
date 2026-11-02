@@ -510,6 +510,8 @@ describe("a push after a review (incremental, rebase-aware)", () => {
     /** What `base...last` lists; "throws" for a commit GitHub no longer has. */
     old: typeof prFiles | "throws";
     current: typeof prFiles;
+    /** What `last...head` lists (everything that changed since the last review); `current` by default. */
+    since?: typeof prFiles;
   }
 
   function run(world: World) {
@@ -527,7 +529,7 @@ describe("a push after a review (incremental, rebase-aware)", () => {
       if (compare) {
         if (compare[1] === LAST) {
           if (world.status === "throws") throw new GhError("gh: Not Found (HTTP 404)", 404, "Not Found");
-          return JSON.stringify({ status: world.status, files: world.current });
+          return JSON.stringify({ status: world.status, files: world.since ?? world.current });
         }
         if (compare[1] === BASE && compare[2] === LAST) {
           if (world.old === "throws") throw new GhError("gh: Not Found (HTTP 404)", 404, "Not Found");
@@ -621,13 +623,47 @@ describe("a push after a review (incremental, rebase-aware)", () => {
     expect(r.prompts[0]).toContain("the whole pull request");
   });
 
-  test("new commits on top (ahead) review only what compare lists, without the rebase check", () => {
+  test("new commits on top (ahead) review the pull request's files whose change differs from the reviewed one", () => {
+    // The old change cannot be read: every file compare lists that is in the pull request is reviewed.
     const r = run({ status: "ahead", old: "throws", current: rebasedFiles });
     expect(r.provider.requests).toHaveLength(1);
-    expect(r.calls.some((c) => c.includes(`compare/${BASE}...`))).toBe(false);
     const first = r.posted?.body.split("\n")[0] ?? "";
     expect(first).toContain("review of the changes since `old1111`, at `head123`");
     expect(first).not.toContain("after a rebase");
+    // The old change is known and one file's change differs: only that file is reviewed.
+    const edited = rebasedFiles.map((f) =>
+      f.filename === STORE ? { ...f, additions: 4, patch: "@@ -0,0 +1,4 @@\n+x\n+y\n+z\n+extra" } : f,
+    );
+    const one = run({ status: "ahead", old: oldFiles, current: edited, since: edited });
+    expect(one.provider.requests).toHaveLength(1);
+    expect(one.prompts[0]).toContain(`- ${STORE} +4 −0`);
+    expect(one.prompts[0]).not.toContain(`- ${MANAGER}`);
+  });
+
+  test("a merge of the base branch into the pull request reviews none of the base's files", () => {
+    // Since the last review the branch gained only the base's commits: compare lists files the
+    // pull request does not touch, and the pull request's own change is the one already reviewed.
+    const fromBase = [
+      { filename: "src/elsewhere.ts", additions: 9, deletions: 2, patch: "@@ -1,2 +1,9 @@\n-old\n+new" },
+      { filename: "docs/changelog.md", additions: 3, deletions: 0, patch: "@@ -0,0 +1,3 @@\n+a\n+b\n+c" },
+    ];
+    const r = run({ status: "ahead", old: oldFiles, current: oldFiles, since: fromBase });
+    expect(r.provider.requests).toHaveLength(0);
+    expect(r.posted?.body.split("\n")[0]).toBe(
+      "👮 **Wachiman** · Brought up to date with the base branch, no new changes since `old1111`.",
+    );
+    expect(lastEngineMarker([{ body: r.posted?.body ?? "" }])).toBe(HEAD);
+    // The merge also touched a file the pull request changes, without changing the pull request's
+    // own hunks in it: compare lists it, and it is still not reviewed.
+    const touched = run({ status: "ahead", old: oldFiles, current: oldFiles, since: [...fromBase, oldFiles[0]] });
+    expect(touched.provider.requests).toHaveLength(0);
+    // When the pull request's hunks in that file did change, only that file is reviewed.
+    const changed = oldFiles.map((f) => (f.filename === MANAGER ? { ...f, additions: 7, patch: `${f.patch}\n+more` } : f));
+    const hunk = run({ status: "ahead", old: oldFiles, current: changed, since: [...fromBase, changed[0]] });
+    expect(hunk.provider.requests).toHaveLength(1);
+    expect(hunk.prompts[0]).toContain(`- ${MANAGER} +7`);
+    expect(hunk.prompts[0]).not.toContain("- src/elsewhere.ts");
+    expect(hunk.logs.join("\n")).toContain("not in the pull request's own change");
   });
 });
 

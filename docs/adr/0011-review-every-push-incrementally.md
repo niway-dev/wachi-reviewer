@@ -76,8 +76,10 @@ base and the old head fetched with a token, and would not be testable without a 
   pull request.
 - A rebase onto a base that changes what the unchanged lines mean (a renamed function the pull
   request calls) is not reviewed again. The old review cannot see it either.
-- A merge of the base branch into the pull request is a push on top; GitHub's compare can list the
-  base's files, so that review may cover files the pull request did not touch. Not handled here.
+- A merge of the base branch into the pull request is a push on top whose compare lists the base's
+  files. Only files in the pull request's own change (its diff against the merge base) are
+  candidates, and of those only the ones whose change differs from the reviewed one are reviewed;
+  a merge that brings nothing of the pull request's own posts a one-line marker, like a rebase.
 - A cancelled run (a newer push) posts nothing; what it had spent is not verified.
 - Callers on an old pin do not get push reviews until they edit their trigger; a copied install
   must edit its copy by hand ([upgrading.md](../upgrading.md)).
@@ -87,7 +89,6 @@ base and the old head fetched with a token, and would not be testable without a 
 - Thread follow-up and learned memory, still in #43 (see [ADR 0008](0008-thread-follow-up-authority.md)
   and [ADR 0007](0007-learned-memory-by-draft-pr.md)).
 - The strict verdict parser, #42.
-- Handling a merge of the base into the pull request.
 - Any dollar saving other than skipping an unchanged rebase and reviewing only what is new.
 
 ## Reopen if

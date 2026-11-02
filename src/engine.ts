@@ -1371,8 +1371,43 @@ export function review(deps: Deps, repo: string, pr: number, words: string[]) {
       deps.warn(`Could not compare ${short(last)} with the head: ${String(error).slice(0, 200)}`);
     }
     if (cmp && cmp.status === "ahead") {
+      // New commits on top. `compare` lists everything that changed since `last`, which after a
+      // merge of the base branch into the pull request includes the base's own files: those are
+      // not part of the pull request (GitHub's file list is the diff against the merge base) and
+      // are not reviewed. Of the pull request's files, only those whose change differs from the
+      // one reviewed at `last` are reviewed again.
       since = last;
-      files = cmp.files;
+      const inPr = new Map(prFiles.map((f) => [f.filename, f]));
+      const own = cmp.files.filter((f) => inPr.has(f.filename));
+      const delta =
+        own.length === 0
+          ? ({ kind: "unchanged", removed: [] } as RebaseDelta)
+          : rebaseDelta(gh, repo, baseSha(gh, repo, pr), last, own.map((f) => inPr.get(f.filename)!));
+      if (delta.kind === "unchanged") {
+        deps.log(
+          `The ${cmp.files.length} file(s) changed since ${short(last)} are not part of the pull request's own change (a merge of the base branch), or their change is the one already reviewed; nothing to review.`,
+        );
+        // The marker moves so that the next push is compared with this head, not with the old one.
+        postReview(deps, repo, pr, headSha, {
+          body: [
+            branded(`Brought up to date with the base branch, no new changes since \`${short(last)}\`.`),
+            SIGNATURE.review,
+            marker(headSha),
+          ].join("\n\n"),
+          comments: [],
+        });
+        return;
+      }
+      if (delta.kind === "changed") {
+        const keep = new Set(delta.files.map((f) => f.filename));
+        files = own.filter((f) => keep.has(f.filename));
+      } else {
+        files = own;
+      }
+      if (files.length < cmp.files.length)
+        deps.log(
+          `${cmp.files.length - files.length} of the ${cmp.files.length} file(s) changed since ${short(last)} are not reviewed: not in the pull request's own change, or that change is the one already reviewed.`,
+        );
     } else {
       // The branch was rewritten (a rebase, a squash, a force-push). The content decides, not the SHAs.
       const base = baseSha(gh, repo, pr);

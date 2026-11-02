@@ -222,9 +222,13 @@ patch-id` over a diff without context, done on the patches GitHub sends. A file 
 identical counts as unchanged even without a patch (a binary file).
 
 What this does not catch: a rebase onto a base that changes what the unchanged lines mean (the base
-renamed a function the pull request calls) looks unchanged and is not reviewed again. A merge of
-the base branch into the pull request is a normal push on top, and GitHub lists the base's files in
-that compare, so the review can cover them.
+renamed a function the pull request calls) looks unchanged and is not reviewed again.
+
+A merge of the base branch into the pull request is a push on top, and GitHub's compare lists the
+base's files. Those are not part of the pull request (its file list is the diff against the merge
+base) and are not reviewed. Of the pull request's own files, only the ones whose change differs
+from the reviewed one are reviewed again; a merge that changes none of them posts a one-line
+"Brought up to date with the base branch" marker and calls no model.
 
 To turn it off, remove `synchronize` from the caller's types, or pass `review_on_push: false` to the
 reusable workflow. Each push can spend up to `budget_usd` ([costs.md](costs.md)).
