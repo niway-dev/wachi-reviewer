@@ -319,6 +319,116 @@ describe("the turn cap and the wall-clock kill", () => {
   });
 });
 
+describe("flow questions and contracts against a fake provider", () => {
+  const closed = (over: Record<string, unknown> = {}) => ({
+    action: "drag a ready copy",
+    location: `${MANAGER}:2`,
+    equivalent_path: "",
+    before_after: "the toast marks the copy seen first",
+    visible_effect: "the copy keeps its unseen outline",
+    failure_mode: "",
+    status: "closed",
+    evidence: [`${MANAGER}:2`],
+    open_question: "",
+    candidates: [],
+    ...over,
+  });
+
+  const run = (batches: Partial<ProviderResult>[], lineCounter: Deps["lineCounter"], env: Record<string, string> = {}) => {
+    const posted: { review?: { body: string; comments: { body: string }[] } } = {};
+    const warnings: string[] = [];
+    const provider = new FakeProvider(batches.map((b) => () => b));
+    const deps: Deps = {
+      gh: fakeGh(posted),
+      provider,
+      config: loadConfig(env),
+      log: () => {},
+      warn: (w) => warnings.push(w),
+      lineCounter,
+    };
+    review(deps, "o/r", 7, []);
+    return { posted: posted.review, warnings, provider };
+  };
+
+  const everything = out({ files_reviewed: [MANAGER, STORE, GUIDE, LOGO], summary: "ok" });
+
+  test("the batch prompt asks the flow questions and the schema carries contracts and confidence", () => {
+    const { provider } = run([{ structuredOutput: everything }], () => 100);
+    const [request] = provider.requests;
+    expect(request.prompt).toContain("## What the change does to the running product");
+    expect(request.prompt).toContain("Failure path");
+    expect(request.prompt.indexOf("What the change does to the running product")).toBeLessThan(
+      request.prompt.indexOf("Every finding has a severity"),
+    );
+    const schema = request.outputSchema as { required: string[] };
+    expect(schema.required).toContain("contracts");
+  });
+
+  test("a contract whose citations exist is rendered, with the finding's confidence", () => {
+    const { posted, warnings } = run(
+      [
+        {
+          structuredOutput: {
+            ...everything,
+            contracts: [closed(), closed({ action: "export finishes", location: `${STORE}:1`, status: "open", evidence: [], open_question: "Who re-lists?", candidates: [GUIDE] })],
+            findings: [
+              { path: MANAGER, line: 2, severity: "fix", topic: "bug", confidence: "high", title: "Seen flag skipped", body: "The toast sets it; this path does not." },
+            ],
+          },
+        },
+      ],
+      (path) => (path === MANAGER ? 6 : null),
+    );
+    expect(warnings).toEqual([]);
+    const body = posted?.body ?? "";
+    expect(body).toContain("<summary>What the change connects to (1 closed, 1 open)</summary>");
+    expect(body).toContain("- drag a ready copy (`apps/api/src/main/session/session-manager.ts:2`)");
+    expect(body).toContain("Who re-lists?");
+    expect(body.indexOf("What the change connects to")).toBeLessThan(body.indexOf("Coverage by batch"));
+    expect(posted?.comments[0].body).toContain("**Fix · bug: Seen flag skipped (confidence high)**");
+  });
+
+  test("a citation to a missing file or a line past the end is a warning, and the review still posts", () => {
+    const { posted, warnings } = run(
+      [
+        {
+          structuredOutput: {
+            ...everything,
+            contracts: [closed({ evidence: [`${MANAGER}:2`, "src/ghost.ts:4", `${MANAGER}:99`] })],
+          },
+        },
+      ],
+      (path) => (path === MANAGER ? 6 : null),
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("src/ghost.ts does not exist in the head");
+    expect(warnings[0]).toContain("is past the end of");
+    expect(posted?.body).toContain("A citation did not resolve in the head.");
+  });
+
+  test("contracts from two batches are merged into one block, one entry per action and location", () => {
+    const { posted, provider } = run(
+      [
+        {
+          structuredOutput: out({
+            files_reviewed: [MANAGER, STORE],
+            files_skipped: [{ path: LOGO, reason: "binary" }],
+            summary: "ok",
+            contracts: [closed(), closed({ action: "Back", location: `${STORE}:1`, evidence: [`${STORE}:1`] })] as never,
+          }),
+        },
+        {
+          structuredOutput: out({ files_reviewed: [GUIDE], summary: "ok", contracts: [closed()] as never }),
+        },
+      ],
+      () => 100,
+      { AGENT_REVIEW_BATCH_LINES: "10" },
+    );
+    expect(provider.requests).toHaveLength(2);
+    expect(posted?.body).toContain("What the change connects to (2 closed, 0 open)");
+  });
+});
+
 describe("the ADR notice", () => {
   const ADR = "docs/adr/0003-two-axis-finding-labels.md";
   const withAdr = [...prFiles, { filename: ADR, additions: 2, deletions: 0, patch: "@@ -1,1 +1,2 @@\n x\n+y" }];
