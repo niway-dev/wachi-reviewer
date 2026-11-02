@@ -144,3 +144,12 @@ Runs (niway-dev/kaipu-record Actions): Wachi 41153055286 (#463), 41153536509 (#4
 Two docs-only PRs reviewed the same day by both reviewers: [pr-472-473.md](pr-472-473.md). Two
 valid findings each, one shared per PR. The split repeats at small scale: Pullfrog on the effect of
 the change, Wachi on claim-vs-code.
+
+## Addendum: #475, three reviewers and three fix commits
+
+[pr-475.md](pr-475.md): Wachiman, Pullfrog and CodeRabbit on the same PR. Six valid findings, no
+invalid one, all fixed: Wachiman 2 (ADR vs code, a hardcoded divisor), Pullfrog 1 (functional, on
+the first commit), CodeRabbit 3 (two regressions in the fix for Pullfrog's finding, one outside
+the delta). Wachiman ran only on the first commit and never answered the author's thread replies,
+because its caller does not run on `synchronize` or on review-comment replies. Three of the six
+findings were on fix commits, which moves improvement 4 (run on `synchronize`) up.
