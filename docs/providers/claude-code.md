@@ -122,7 +122,8 @@ load. Hosted runners have none.
 - `--strict-mcp-config`: no MCP servers other than those passed explicitly (none are).
 - `--tools Read,Glob,Grep`: the only tools that exist.
 - `--settings` and `--disallowedTools`: deny `Bash` and reads of `/proc`.
-- `--max-budget-usd`: a soft, client-side cap. A call can overshoot it.
+- `--max-budget-usd`: a soft, client-side cap. A call can overshoot it. How the engine adds up
+  these caps across batches and retries: [costs.md](../costs.md).
 
 ## What is verified and what is not
 
