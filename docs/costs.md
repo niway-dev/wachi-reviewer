@@ -5,7 +5,7 @@ provider bills your account. This project runs no service and takes no payment. 
 what bounds the spend of one run, where those bounds are weaker than they sound, and how to read
 the cost a review reports.
 
-**Most budgets limit one run. One limit covers a pull request's automatic runs together: `auto_budget_usd` (default $2).** Nothing limits a month. For the supported
+**Most budgets limit one run. One limit covers a pull request's automatic runs together: `auto_budget_usd` (default $6).** Nothing limits a month. For the supported
 Claude workflow the per-call cap is soft: a call can spend more than its cap. For Codex there is no
 per-call dollar cap at all. Treat the settings as guard rails, and set a spend limit at the provider
 if you need a hard ceiling.
@@ -28,7 +28,7 @@ the agent. See [Dry runs](#dry-runs).
 
 Reviewing every push and answering thread replies means a pull request pays for many runs. All
 **automatic** runs on one pull request (the first review, push reviews and thread-reply runs) share
-`auto_budget_usd`, default **$2**. There is no server: before each automatic run the engine adds up
+`auto_budget_usd`, default **$6**, which leaves room for one full review (`budget_usd`, $3) and several push reviews. There is no server: before each automatic run the engine adds up
 the cost lines of its own signed review footers that carry the automatic flag
 (`<!-- wachi:auto -->`), and the run gets at most what is left. When less than $0.05 is left, it
 posts one "Automatic reviews paused" notice and does nothing else, and later pushes post nothing

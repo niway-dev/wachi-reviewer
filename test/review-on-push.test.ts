@@ -101,7 +101,7 @@ describe("thread replies without a push (ADR 0012)", () => {
   test("the ceiling and thread budget are number inputs with the spec's defaults, and each job passes the trigger", () => {
     const input = (name: string) => workflow.match(new RegExp(`\\n {6}${name}:\\n([\\s\\S]*?)(?=\\n {6}[a-z_]+:\\n|\\n {4}secrets:)`))?.[1] ?? "";
     expect(input("auto_budget_usd")).toMatch(/type: number/);
-    expect(input("auto_budget_usd")).toMatch(/default: 2\b/);
+    expect(input("auto_budget_usd")).toMatch(/default: 6\b/);
     expect(input("threads_budget_usd")).toMatch(/type: number/);
     expect(input("threads_budget_usd")).toMatch(/default: 0\.25\b/);
     expect(jobOf(workflow, "review")).toContain("AGENT_REVIEW_TRIGGER: ${{ github.event.action }}");

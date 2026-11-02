@@ -19,7 +19,7 @@
 On kaipu-record#475, three of six valid findings were on fix commits pushed after the first
 review, two of them regressions introduced by a fix, and the author's replies to Wachiman's threads
 got no answer. #68 makes every push reviewed and makes a content-free rebase free. Three things are
-still missing, and this spec designs them. A ceiling ($2 by default) on what all automatic runs on
+still missing, and this spec designs them. A ceiling ($6 by default; $2 at first, raised on review because it was below one full review's $3) on what all automatic runs on
 one pull request may spend (A). A small thread-only run that answers the operator's replies
 without waiting for a push (B). And a fix check: every incremental review asks what the new
 commits can break, not only whether they fix something, using the previous version of the changed
@@ -27,7 +27,7 @@ code and the call sites #69 already collects (C).
 
 | # | Decision | Why | ADR |
 | --- | --- | --- | --- |
-| A1 | All automatic runs on one pull request (first review, push reviews, thread runs) share a ceiling, input `auto_budget_usd`, default **$2**. A run gets at most what is left; at the ceiling the engine posts one notice and stops. `/wachi review` is not limited | #68 bounds each run ($3) but a pull request now pays per push. The owner sets the limit in dollars | 0012 (new) |
+| A1 | All automatic runs on one pull request (first review, push reviews, thread runs) share a ceiling, input `auto_budget_usd`, default **$6** (first $2, raised on review: below one full review's `budget_usd` of $3). A run gets at most what is left; at the ceiling the engine posts one notice and stops. `/wachi review` is not limited | #68 bounds each run ($3) but a pull request now pays per push. The owner sets the limit in dollars | 0012 (new) |
 | A2 | Spend is summed from the cost line of the engine's signed footers marked `<!-- wachi:auto -->`; model text cannot forge either (`neutralise`, signed-footer rule) | The pull request is the only state between runs (ADR 0001: no server) | 0012 |
 | B1 | Callers listen to `pull_request_review_comment: created`. The job starts only for a reply by the `operator`, on a same-repository head, never for a bot | The author's answers arrive on that event. The gate runs before any paid step | 0012 |
 | B2 | Thread-only mode (`cli.ts threads`) answers every pending Wachiman thread and acts only when the head is already reviewed; otherwise it exits without a model call | The author's agent replies about 13 s after it pushes; the push's review reads the same replies. No duplicate answers | 0012 |

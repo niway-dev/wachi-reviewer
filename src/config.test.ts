@@ -11,7 +11,7 @@ describe("loadConfig", () => {
     const { config, warnings } = load({});
     expect(config).toEqual({
       budgetUsd: 3,
-      autoBudgetUsd: 2,
+      autoBudgetUsd: 6,
       threadsBudgetUsd: 0.25,
       trigger: undefined,
       batchBudgetUsd: 0.75,

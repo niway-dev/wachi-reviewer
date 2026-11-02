@@ -23,7 +23,7 @@ record, goes in the review body. Every comment opens with "👮 **Wachiman**".
   draft, and, if your caller lists `synchronize`, on each push (only the new commits). The operator
   you name can comment `/wachi review` to ask for another review of what changed, or any other
   `/wachi …` text to ask a question, and a reply the operator writes in a review thread gets an
-  answer without a push. All automatic runs on one pull request together stop at $2 by default
+  answer without a push. All automatic runs on one pull request together stop at $6 by default
   (`auto_budget_usd`); `/wachi review` is not limited. Details: [docs/reviews.md](docs/reviews.md).
 - **Large pull requests are reviewed in batches**, riskiest files first (the risk is a score
   computed from file paths, not a reading of the code). Each batch is one agent call with a

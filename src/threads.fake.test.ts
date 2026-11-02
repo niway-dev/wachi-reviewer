@@ -417,7 +417,7 @@ describe("threadReplies (cli.ts threads)", () => {
   });
 
   test("it counts against the pull request's ceiling: the budget is what is left, capped by the thread budget", () => {
-    const t = setup({ spent: 1.9 });
+    const t = setup({ spent: 5.9 });
     threadReplies(t.deps, "o/r", 7);
     expect(t.provider.requests[0].maxBudgetUsd).toBeCloseTo(0.1, 10);
     const roomy = setup({ spent: 0.2, env: { AGENT_REVIEW_THREADS_BUDGET_USD: "0.4" } });
@@ -426,18 +426,18 @@ describe("threadReplies (cli.ts threads)", () => {
   });
 
   test("at the ceiling it posts the one notice and answers nothing; a second reply posts no second notice", () => {
-    const t = setup({ spent: 2.0 });
+    const t = setup({ spent: 6.0 });
     threadReplies(t.deps, "o/r", 7);
     expect(t.provider.requests).toHaveLength(0);
     expect(t.replies).toEqual([]);
     expect(t.notices).toHaveLength(1);
-    expect(t.notices[0]).toContain("Automatic reviews paused: $2.00 of $2.00");
+    expect(t.notices[0]).toContain("Automatic reviews paused: $6.00 of $6.00");
     threadReplies(t.deps, "o/r", 7);
     expect(t.notices).toHaveLength(1);
   });
 
   test("with a notice already posted for this ceiling, nothing is posted", () => {
-    const t = setup({ spent: 2.0, existingNotice: "2.00" });
+    const t = setup({ spent: 6.0, existingNotice: "6.00" });
     threadReplies(t.deps, "o/r", 7);
     expect(t.notices).toEqual([]);
     expect(t.provider.requests).toHaveLength(0);

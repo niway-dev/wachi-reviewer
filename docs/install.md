@@ -147,7 +147,7 @@ pull request from then on, including ones opened earlier.
   agent. A caller without that trigger gets no such answer
   ([upgrading.md](upgrading.md#answering-thread-replies-without-a-push)).
 - **Automatic runs share a ceiling.** The first review, push reviews and thread replies on one pull
-  request together spend at most `auto_budget_usd` (default $2); then one notice is posted and
+  request together spend at most `auto_budget_usd` (default $6); then one notice is posted and
   `/wachi review` still works ([costs.md](costs.md#the-ceiling-per-pull-request)).
 - **A mistyped path can widen the request.** Words after `review` that match no changed file
   are ignored. If none match, the request runs as an unscoped review, which may spend more than

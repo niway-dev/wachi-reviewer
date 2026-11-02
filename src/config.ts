@@ -122,7 +122,7 @@ export function loadConfig(env: Env, warn: (line: string) => void = console.erro
   }
   return {
     budgetUsd: number("BUDGET_USD", 3),
-    autoBudgetUsd: number("AUTO_BUDGET_USD", 2),
+    autoBudgetUsd: number("AUTO_BUDGET_USD", 6),
     threadsBudgetUsd: number("THREADS_BUDGET_USD", 0.25),
     trigger: trigger || undefined,
     batchBudgetUsd: number("BATCH_BUDGET_USD", 0.75),

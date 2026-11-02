@@ -51,9 +51,10 @@ on:
           Most all automatic runs on one pull request (the first review, push reviews and thread
           replies) may spend together, in USD, summed from the signed footers of Wachiman's own
           reviews. At the limit one notice is posted and automatic runs stop; `/wachi review` is
-          not limited by it
+          not limited by it. The default leaves room for one full review (`budget_usd`, $3) and
+          several push reviews
         type: number
-        default: 2
+        default: 6
       threads_budget_usd:
         description: Most one thread-reply run may spend, in USD (it counts against `auto_budget_usd`)
         type: number

@@ -37,7 +37,7 @@ per pull request. The owner wants a limit in dollars per pull request, $2 by def
    without a model call: the push's review will read the same replies. Thread runs have their own
    concurrency group with `cancel-in-progress: false` and never cancel a review.
 3. **One ceiling for automatic runs.** Every automatic run on a pull request (the first review,
-   push reviews, thread runs) counts against `auto_budget_usd`, default $2, summed from the cost
+   push reviews, thread runs) counts against `auto_budget_usd`, default $6 (amended on review: $2 was below one full review's `budget_usd` of $3, so a large pull request's first automatic review would have been cut short), summed from the cost
    line of the engine's own signed footers marked automatic. A run that starts gets at most what is
    left. At the ceiling the engine posts one notice and stops. The operator's `/wachi review` is not
    limited by it.
