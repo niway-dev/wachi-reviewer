@@ -136,6 +136,17 @@ one batch. Inline comments carry no footer and no cost. The cost is what the pro
 for the calls of that run (for Codex, an estimate from token counts), and a call that died
 without a result is counted at its cap. See [costs.md](costs.md).
 
+## What the model sees besides the diff
+
+Each batch's prompt holds the batch's diff, the repository's instructions and, when the added
+lines call code defined elsewhere, a short list of **other call sites of the same symbols** found
+by a text search of the head (for example, who else calls `startFileDrag`, with a few lines
+around each call). The model is told to compare the new call with those siblings, because the
+step a sibling takes and the new code skips is a bug the diff alone cannot show. The list is
+textual evidence, not a verdict: it can be incomplete and misses renamed or aliased uses. The
+full list is in the run's scratch directory as `evidence.json`; caps and limits are in
+[architecture.md](architecture.md#call-site-evidence-evidencejson).
+
 ## Coverage: what "reviewed" means
 
 The first line of the review says whether everything was covered:
