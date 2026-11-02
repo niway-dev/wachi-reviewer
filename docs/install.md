@@ -212,11 +212,11 @@ rules it is reviewed under. See [review-policy.md](review-policy.md).
 ## Optional: settings
 
 Only `operator` is required. Every other input, with its default, type and the environment
-setting it becomes, is in [configuration.md](configuration.md). The ones people change first
-are `mention` (the command word), the budgets (`budget_usd`, `batch_budget_usd`,
-`answer_budget_usd`), `skip_branch_prefixes` and `review_on_push`. Budgets apply per run, not per month, and the
-Claude Code limit on a call is a soft client-side cap, so it can be exceeded
-([costs.md](costs.md)).
+setting it becomes, is in [configuration.md](configuration.md#inputs); that page is the only place
+the inputs are listed. The ones people change first are `mention` (the command word), the budgets
+(`budget_usd`, `batch_budget_usd`, `answer_budget_usd`), `skip_branch_prefixes` and
+`review_on_push`. Budgets apply per run, not per month, and the Claude Code limit on a call is a
+soft client-side cap, so it can be exceeded ([costs.md](costs.md)).
 
 ## How updates arrive
 
