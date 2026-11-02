@@ -1,8 +1,13 @@
 # Re-review on push: a ceiling, thread replies and fix checks
 
-- **Status:** proposed 2026-11-01. Nothing here is implemented. It builds on three open pull
-  requests: #68 (review every push, rebase-aware; ADR 0011), #69 (sibling call sites in
-  `evidence.json`) and #70 (flow and failure questions, `contracts[]`, `confidence`).
+- **Status:** proposed 2026-11-01. **Parts A (the ceiling) and B (thread replies without a push)
+  are implemented** by the pull request that adds this line, `feat/auto-ceiling-and-thread-replies`
+  (`ceilingRoom`, `automaticSpend`, `threadReplies`, the `threads` job, the `pull_request_review_comment`
+  trigger in both templates). They have unit and workflow-text tests and have **not run in a real
+  workflow yet** (open question 4 is still unverified). **Part C (fix checks, `fix_check`) is not
+  implemented.** It builds on #68 (review every push, rebase-aware; ADR 0011), #69 (sibling call
+  sites in `evidence.json`) and #70 (flow and failure questions, `contracts[]`, `confidence`), all
+  merged.
 - **Creates:** ADR 0012 (automatic answers to thread replies, one ceiling per pull request).
   Reuses ADR 0001, 0003, 0008, 0009, 0011.
 - **Refs:** #71, #43. Evidence: [kaipu-record#475](../benchmark/2026-10-31/pr-475.md). Part C
@@ -74,17 +79,22 @@ code and the call sites #69 already collects (C).
 
 ## Acceptance criteria
 
-- [ ] With `auto_budget_usd: 0.5` and $0.50 of recorded automatic spend, the next push posts the
+Checked items are covered by tests in the pull request that implements parts A and B (engine tests
+with a fake `gh` and a fake provider, and textual checks of `review.yml` and the templates). None
+has run in a real workflow; Actions behaviour (a skipped job, a pending concurrency run) is not
+tested here.
+
+- [x] With `auto_budget_usd: 0.5` and $0.50 of recorded automatic spend, the next push posts the
       ceiling notice once and starts no batch; a later push posts nothing.
-- [ ] A run started with $0.30 left under the ceiling is given a budget of at most $0.30.
-- [ ] `/wachi review` runs normally on a pull request at its ceiling.
-- [ ] A reply by a user who is not the operator starts no job (skipped in the Actions list).
-- [ ] An operator reply on a reviewed head gets one Wachiman reply in that thread citing
+- [x] A run started with $0.30 left under the ceiling is given a budget of at most $0.30.
+- [x] `/wachi review` runs normally on a pull request at its ceiling.
+- [x] A reply by a user who is not the operator starts no job (skipped in the Actions list).
+- [x] An operator reply on a reviewed head gets one Wachiman reply in that thread citing
       `path:line` at the head; the thread stays unresolved.
-- [ ] An operator reply posted within 30 s after a push gets exactly one Wachiman answer, from
+- [x] An operator reply posted within 30 s after a push gets exactly one Wachiman answer, from
       the push review.
-- [ ] A third operator reply in a thread with two Wachiman replies gets no answer.
-- [ ] Engine tests cover: the ceiling sum read only from signed footers marked automatic, a forged
+- [x] A third operator reply in a thread with two Wachiman replies gets no answer.
+- [x] Engine tests cover: the ceiling sum read only from signed footers marked automatic, a forged
       marker or cost line in model text, the reviewed-head gate of the thread mode.
 - [ ] With `fix_check: true` on an incremental run, the batch prompt contains the previous-version
       section, the commit messages labelled as claims and the three questions; with `false`, or on

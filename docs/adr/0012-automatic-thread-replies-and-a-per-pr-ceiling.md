@@ -1,7 +1,12 @@
 # ADR 0012: Automatic answers to thread replies, and one spending ceiling per pull request
 
-- **Status:** proposed 2026-11-01. Not implemented. Amends ADR 0001 decision 5. Builds on ADR 0011
-  (review every push, #68), which is proposed and not merged.
+- **Status:** proposed 2026-11-01. **Implemented** (decisions 1 to 3) by the pull request that adds
+  this line, `feat/auto-ceiling-and-thread-replies`: `ceilingRoom` and `automaticSpend` in
+  `src/engine.ts` for decision 3, `threadReplies`, `cli.ts threads` and the `threads` job of
+  `review.yml` for decisions 1 and 2. It has unit and workflow-text tests and **has not run in a real
+  workflow yet**; whether `pull_request_review_comment` runs get the secrets is unverified until the
+  first real install. Amends ADR 0001 decision 5. Builds on ADR 0011 (review every push, #68), merged.
+  The spec's part C (fix checks) is not part of this ADR and is not implemented.
 - **Spec:** [Re-review on push, thread replies and fix checks](../specs/2026-11-01-re-review-on-push-design.md)
 - **Evidence:** [kaipu-record#475](../benchmark/2026-10-31/pr-475.md)
 
@@ -54,7 +59,9 @@ per pull request. The owner wants a limit in dollars per pull request, $2 by def
 
 - The default ceiling can be spent by the first review of a large pull request ($1.36 on #467);
   the notice tells the operator how to continue.
-- A cancelled run posts nothing, so its spend is in no footer and the ceiling under-counts it.
+- A cancelled run posts nothing, so its spend is in no footer and the ceiling under-counts it. So
+  does a thread run whose replies were all dropped (a citation that does not exist, or a push that
+  landed meanwhile), and so does a run that throws after its calls. Footers show cents.
 - The workflow gains a job and an event. Permissions stay `contents: read` and
   `pull-requests: write`.
 - ADR 0001's Status line records the amendment of decision 5.
