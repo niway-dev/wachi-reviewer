@@ -49,6 +49,10 @@ describe("buildCodexArgs", () => {
     expect(configs.some((c) => c.startsWith("model_reasoning_effort"))).toBe(false);
   });
 
+  test("receives the shared effort setting through getProvider", () => {
+    expect(getProvider("codex", { model: "gpt-6.1-sol", dryRun: false, effort: "medium" }).name).toBe("codex");
+  });
+
   test("passes a reasoning effort only when set", () => {
     const withEffort = buildCodexArgs({ model: "m", workDir: "/w", lastMessageFile: "/o", reasoningEffort: "high" });
     expect(withEffort).toContain('model_reasoning_effort="high"');
@@ -238,7 +242,7 @@ echo '{"type":"turn.completed","usage":{"input_tokens":1000000,"cached_input_tok
 describe("selection", () => {
   test("codex is an accepted provider with its own default model", () => {
     expect(PROVIDER_NAMES).toContain("codex");
-    expect(getProvider("codex", { model: "gpt-6.1-sol", dryRun: false }).name).toBe("codex");
+    expect(getProvider("codex", { model: "gpt-6.1-sol", dryRun: false, effort: "high" }).name).toBe("codex");
     expect(loadConfig({ AGENT_REVIEW_PROVIDER: "codex" }).model).toBe(DEFAULT_MODELS.codex);
     expect(loadConfig({}).model).toBe("claude-sonnet-5-5");
     expect(loadConfig({ AGENT_REVIEW_PROVIDER: "codex", AGENT_REVIEW_MODEL: "gpt-6-sol" }).model).toBe("gpt-6-sol");

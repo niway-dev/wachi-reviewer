@@ -11,6 +11,15 @@
  * (ADR 0004); if a third adapter does not fit, redraw it.
  */
 
+/**
+ * Reasoning effort levels, in the vocabulary both CLIs share. The consumer picks one its provider
+ * and model accept (Codex may refuse `xhigh` or `max` for some models); nothing translates it.
+ */
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type Effort = (typeof EFFORTS)[number];
+/** Explicit on purpose: Claude Code's own default moved from medium to high in 2.1.94 and may move again. */
+export const DEFAULT_EFFORT: Effort = "high";
+
 /** Tool names the engine may ask for. Each adapter maps them to its own names. */
 export type NeutralTool = "read" | "glob" | "grep";
 

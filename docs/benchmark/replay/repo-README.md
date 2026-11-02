@@ -117,20 +117,25 @@ the two Claude-based reviewers over CodeRabbit.
 
 ## How this repository was set up
 
-1. `gh repo create niway-dev/kaipu-bench-<reviewer> --public`.
-2. `main`: an orphan commit with this README and the reviewer's workflow (Wachi: on-demand
+1. `bench.sh create <reviewer> <repo-name>`
+   ([script](https://github.com/niway-dev/wachiman/blob/main/docs/benchmark/replay/bench.sh)):
+   `gh repo create niway-dev/kaipu-bench-<reviewer>[-vN] --public`.
+2. `main`: a fresh single commit with this README and the reviewer's files (Wachi: on-demand
    `wachi-bench.yml`, named apart from kaipu-record's `agent-review.yml`; Pullfrog: kaipu-record's
    `pullfrog.yml`; CodeRabbit: nothing).
 3. From a kaipu-record clone, `git push <repo> <base-sha>:refs/heads/replay/pr-<n>/base
-   <head-sha>:refs/heads/replay/pr-<n>/head` for the five PRs
-   ([script](https://github.com/niway-dev/wachiman/blob/main/docs/benchmark/replay/push-replays.sh)).
-4. Owner installs the Pullfrog and CodeRabbit apps on their repositories.
-5. Pull requests `[replay] <original title>` are opened from `head` to `base`, labelled `replay`,
-   one per branch pair, never merged, closed when the reviews are in. In the Wachi repository
-   they are opened before the API key secret exists, so the replayed commits' own
-   `agent-review.yml` (Wachi v1.2.0) fails instead of running; that workflow is then disabled in
-   Actions, the secret is added, and `/wachi review` starts each run.
-6. Results are copied back into the Wachi repository under `docs/benchmark/<date>/`; GitHub
+   <head-sha>:refs/heads/replay/pr-<n>/head` for every row of the
+   [manifest](https://github.com/niway-dev/wachiman/blob/main/docs/benchmark/replay/manifest-2026-10-31.tsv).
+4. A draft setup PR makes GitHub register the replayed commits' own workflows (`agent-review.yml`,
+   Wachi v1.2.0, and `pr-checks.yml`); they are disabled and the PR is closed, so it is #1 and the
+   replays start at #2. This happens before any API key secret exists.
+5. Owner installs the Pullfrog and CodeRabbit apps on their repositories and adds the
+   `ANTHROPIC_API_KEY` secret where needed.
+6. `bench.sh open <repo-name>`: pull requests `[replay] <original title>` from `head` to `base`,
+   labelled `replay`, one per branch pair, never merged, closed when the reviews are in. Wachi
+   starts on a `/wachi review` comment, CodeRabbit on `@coderabbitai review` (its automatic review
+   skips these PRs), Pullfrog when the PR opens.
+7. Results are copied back into the Wachi repository under `docs/benchmark/<date>/`; GitHub
    expires Actions logs, so raw review bodies and tool-call lists are kept there too.
 
 ## Known limits

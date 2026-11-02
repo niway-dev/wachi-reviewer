@@ -174,7 +174,7 @@ describe("the batch loop against a fake provider", () => {
     expect(body).toContain("**Batch 1 of 2.** Manager looks mostly fine.");
     expect(body).toContain("**Batch 2 of 2.** Guide fine.");
     // Total spent is 0.30 + 0.10 + 0.20, in the footer built from the provider's label.
-    expect(body).toContain("<sub>Fake Model 1 via Fake CLI 0.1 · 2 batches · $0.60</sub>");
+    expect(body).toContain("<sub>Fake Model 1 via Fake CLI 0.1 · effort high · 2 batches · $0.60</sub>");
     expect(posted.review?.comments).toHaveLength(1);
     expect(posted.review?.comments[0]).toMatchObject({ path: MANAGER, line: 2 });
   });

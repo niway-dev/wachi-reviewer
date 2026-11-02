@@ -746,6 +746,15 @@ describe("buildReview", () => {
     modelLabel: "Test Model 1 via Test CLI 0.1",
   };
 
+  test("states the reasoning effort in the footer", () => {
+    const review = buildReview({
+      ...base,
+      effort: "high",
+      output: output({ files_reviewed: ["src/a.ts"] }),
+    });
+    expect(review.body).toContain("<sub>Test Model 1 via Test CLI 0.1 · effort high · $0.07</sub>");
+  });
+
   test("puts every finding on a diff line inline, labelled by severity", () => {
     const review = buildReview({
       ...base,
