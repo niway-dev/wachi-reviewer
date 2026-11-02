@@ -1,5 +1,10 @@
 # Changelog
 
+> **Licensing.** Releases up to and including v1.3.0 were published under the GNU Affero General
+> Public License v3. Later releases are published under the Functional Source License 1.1
+> (`FSL-1.1-ALv2`). The `LICENSE` file in each release tag says which applies. See the README and
+> [ADR 0013](docs/adr/0013-license-fsl-1-1-alv2.md).
+
 ## [1.3.0](https://github.com/niway-dev/wachiman/compare/v1.2.1...v1.3.0) (2026-10-31)
 
 
