@@ -104,9 +104,12 @@ even a comment that would do nothing needs a working provider binary and credent
 
 - `review`: one GitHub review with the event `COMMENT`, never an approval or a change request. Its
   first line says whether coverage is complete or partial, and it ends with a "Coverage by batch"
-  table and a footer `<sub>{model label} · {n} batches · ${cost}</sub>`; the `· {n} batches` part
-  appears only when the review ran more than one batch. The footer names the provider and model,
-  for example "Claude Sonnet 5.5 via Claude Code 2.1.304". A finding on a line of the diff is an
+  table and a footer `<sub>{model label} · effort {effort} · {n} batches · ${cost}</sub>`; the
+  `· {n} batches` part appears only when the review ran more than one batch. The footer names the
+  provider and model, for example "Claude Sonnet 5.5 via Claude Code 2.1.304", and the reasoning
+  effort the run used (`low`, `medium`, `high`, `xhigh` or `max`, [configuration.md](configuration.md#reasoning-effort)).
+  The `· effort {effort}` part is **new in the release after v1.3.0**: the footer of a v1.3.0
+  review is `<sub>{model label} · {n} batches · ${cost}</sub>` and has no effort field. A finding on a line of the diff is an
   inline comment on that line; one on a line outside the diff goes in the body under "Outside the
   diff". Coverage is reported by the agent per file, not measured line by line.
 - A complete, unscoped review also ends with `<!-- agent-review sha=<head> -->`; the next
@@ -129,8 +132,9 @@ even a comment that would do nothing needs a working provider binary and credent
   a later review that has work (a push, or a request with a path that matches). That is today's
   behaviour.
 - `comment` with a question: one pull request comment (not a review) holding the answer, written in
-  English, and a footer with the model label and cost (no batch count, since an answer is one
-  call). The answer is one call over the whole diff, with no batching, no coverage check and no
+  English, and a footer `<sub>{model label} · effort {effort} · ${cost}</sub>` (no batch count,
+  since an answer is one call). As with a review, the `· effort {effort}` part is new in the
+  release after v1.3.0; v1.3.0 prints `<sub>{model label} · ${cost}</sub>`. The answer is one call over the whole diff, with no batching, no coverage check and no
   thread context, capped by `answer_budget_usd`.
 - With `AGENT_REVIEW_DRY_RUN=1` it reads GitHub but prints instead of posting. It still calls the
   agent, so it still costs money.

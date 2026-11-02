@@ -3,14 +3,16 @@
 Every setting Wachiman reads, where it comes from, what it defaults to and what it changes. For a
 first install read [install.md](install.md) instead; this page is for looking things up.
 
-This page describes the code of release v1.3.0. If your caller pins another tag, check
+This page describes the code on the `main` branch. The latest release is v1.3.0, and one setting
+here is newer than it: [reasoning effort](#reasoning-effort), marked **new in the release after
+v1.3.0**. Everything else on this page is the same in v1.3.0. If your caller pins a tag, check
 `src/config.ts` and `.github/workflows/review.yml` at that tag. Wachiman is advisory: no setting
 here makes a review approve, request changes or block a merge.
 
 - [Where settings come from](#where-settings-come-from)
 - [Reusable workflow](#reusable-workflow): [inputs](#inputs), [secret](#secret),
   [permissions](#permissions), [when each job runs](#when-each-job-runs)
-- [Engine settings](#engine-settings) (`AGENT_REVIEW_*`)
+- [Engine settings](#engine-settings) (`AGENT_REVIEW_*`), including [reasoning effort](#reasoning-effort)
 - [Other environment variables](#other-environment-variables)
 - [Mentions and commands](#mentions-and-commands)
 - [Budgets](#budgets)
@@ -26,7 +28,7 @@ here makes a review approve, request changes or block a merge.
 | Surface | Who sets it | What it controls |
 | --- | --- | --- |
 | Caller workflow: `with:` and `secrets:` | The repository that installs Wachiman | Everything the [reusable workflow](#reusable-workflow) accepts. The workflow turns the inputs into `AGENT_REVIEW_*` environment variables for the engine. |
-| Environment variables | Whoever runs the CLI directly, or a copied install | The [engine settings](#engine-settings) and [other variables](#other-environment-variables). Four of them (`DRY_RUN`, `EXCLUDE`, `PRICE_PER_MTOK`, `REASONING_EFFORT`) have no reusable-workflow input. |
+| Environment variables | Whoever runs the CLI directly, or a copied install | The [engine settings](#engine-settings) and [other variables](#other-environment-variables). Three of them (`DRY_RUN`, `EXCLUDE`, `PRICE_PER_MTOK`) have no reusable-workflow input. |
 | Files in the repository | The repository | What the reviewer is told to look for. They are not settings. See [Repository files](#repository-files). |
 
 Rules that hold everywhere:
@@ -61,6 +63,7 @@ engine through the environment variable in the third column; those variables are
 | `batch_lines` | number | `AGENT_REVIEW_BATCH_LINES` | `1000` | Changed lines (additions plus deletions) per batch. A whole number. |
 | `batch_chars` | number | `AGENT_REVIEW_BATCH_CHARS` | `140000` | Characters of diff per batch. A whole number. |
 | `model` | string | `AGENT_REVIEW_MODEL` | `claude-sonnet-5-5` | The model name passed to the provider. The workflow always sends a value, so the engine's per-provider default never applies here. |
+| `effort` | string | `AGENT_REVIEW_EFFORT` | `high` | Reasoning effort: `low`, `medium`, `high`, `xhigh` or `max`. **New in the release after v1.3.0; not in v1.3.0, whose workflow has no such input.** Sent to the engine by both jobs and used by both providers. See [Reasoning effort](#reasoning-effort). |
 | `provider` | string | `AGENT_REVIEW_PROVIDER` | `claude-code` | Selects the adapter. The workflow installs only Claude Code and passes only `ANTHROPIC_API_KEY`, so `claude-code` is the only value that can work in it. Setting `codex` fails before any call (the default `model` has no Codex price, and the Codex binary and key are not provided). Codex is available from the CLI only: [providers/codex.md](providers/codex.md). |
 | `claude_code_version` | string | installer `CLAUDE_CODE_VERSION` | `2.1.304` | The exact Claude Code version downloaded. See [Claude Code installer](#claude-code-installer). |
 | `claude_code_sha256` | string | installer `CLAUDE_CODE_SHA256` | empty | SHA-256 of the Claude Code binary for the runner's platform (`linux-x64` on `ubuntu-latest`). Empty means the installer reads the expected hash from the publisher's manifest. |
@@ -129,7 +132,8 @@ applies.
 | `AGENT_REVIEW_MODEL` | string | `claude-sonnet-5-5` for `claude-code`, `gpt-6.1-sol` for `codex` | Any string the provider accepts | The model name passed to the provider. Not validated by the engine; Codex additionally needs a known price. | both |
 | `AGENT_REVIEW_PROVIDER` | string | `claude-code` | `claude-code`, `codex` | Which adapter runs the agent. Any other value is a usage error (exit 2) that lists the accepted ones. | n/a |
 | `AGENT_REVIEW_PRICE_PER_MTOK` | string | unset | `input,cached_input,output`: three numbers, each 0 or more | USD per million tokens, used to turn Codex's token counts into dollars. Takes precedence over the built-in price, also for a model that has one. | Codex only; ignored by Claude |
-| `AGENT_REVIEW_REASONING_EFFORT` | string | unset | Any string | Passed to Codex as `model_reasoning_effort`. The engine does not check it against a list; unset keeps the model's default. | Codex only; ignored by Claude |
+| `AGENT_REVIEW_EFFORT` | string | `high` | `low`, `medium`, `high`, `xhigh`, `max` | How hard the model reasons. Always passed explicitly, so a change in a provider CLI's own default cannot alter reviews. **New in the release after v1.3.0.** Any other value is a usage error (exit 2). See [Reasoning effort](#reasoning-effort). | both |
+| `AGENT_REVIEW_REASONING_EFFORT` | string | unset | same as `AGENT_REVIEW_EFFORT` | Deprecated name of `AGENT_REVIEW_EFFORT`. Still read, with a notice on stderr, and `AGENT_REVIEW_EFFORT` wins when both are set. See [Reasoning effort](#reasoning-effort). | both |
 | `AGENT_REVIEW_DRY_RUN` | flag | off | `1` | Only the exact value `1` turns it on. Reads GitHub, runs the provider, and prints the review and replies instead of posting them. It still spends: see [Dry run](#dry-run). | both |
 | `AGENT_REVIEW_EXCLUDE` | list | none | Comma-separated globs | Extra files to leave out, on top of the [built-in list](#excluded-files). | both |
 
@@ -145,6 +149,48 @@ How values are read:
 - `AGENT_REVIEW_MODEL` falls back to the default of the selected provider only. An unrecognised
   provider also falls back to the Claude default for the model, then fails with the usage error.
 
+### Reasoning effort
+
+**New in the release after v1.3.0.** It is on `main` and is not in v1.3.0, the latest release. In
+v1.3.0 the only related setting was `AGENT_REVIEW_REASONING_EFFORT`, which only Codex used, which
+the engine did not check, and which left the model's own default when unset. None of that holds on
+`main`.
+
+| | |
+| --- | --- |
+| Workflow input | `effort` (default `high`) |
+| Environment variable | `AGENT_REVIEW_EFFORT` (default `high`) |
+| Accepted values | `low`, `medium`, `high`, `xhigh`, `max` |
+| Applies to | Both providers. Claude Code gets `--effort <value>`; Codex gets `-c model_reasoning_effort="<value>"`. |
+| Where it is shown | The footer of every review and of every `comment` answer, as `effort <value>` ([cli.md](cli.md#what-it-posts)). |
+
+How it is read:
+
+- The effort is always explicit. Leaving it unset does not keep a model or CLI default: the engine
+  uses `high` and passes it to the provider on every call.
+- The value is passed as written, without translation. The engine only checks it against the five
+  names above; whether the chosen model supports that level is up to the provider.
+- A value outside the list is a usage error: the run stops before any call with
+  `AGENT_REVIEW_EFFORT must be one of low, medium, high, xhigh, max, got "…".` and exit 2. There
+  is no silent fallback to `high`. Case matters: `High` is rejected.
+- A set but empty variable counts as unset, so an empty `effort` input means `high`.
+- Claude Code accepts `--effort` from version 2.1.72 (per a comment in the adapter). The workflow's
+  pinned `claude_code_version` is newer; if you run the CLI yourself, use at least that version.
+
+The old variable, `AGENT_REVIEW_REASONING_EFFORT`, is deprecated:
+
+- It is still read, and now for both providers, not only Codex.
+- Whenever it is set and not empty, the engine writes
+  `AGENT_REVIEW_REASONING_EFFORT is deprecated; use AGENT_REVIEW_EFFORT.` to stderr.
+- `AGENT_REVIEW_EFFORT` takes precedence. When both are set, the new one is used and the old one
+  is ignored, value included: an invalid old value does not fail a run whose new value is valid.
+- When only the old one is set, its value is used and checked the same way. An invalid value is a
+  usage error (exit 2) that names `AGENT_REVIEW_REASONING_EFFORT`.
+- The `CLAUDE_REVIEW_` spelling of either name is also read (see
+  [Deprecated names](#deprecated-names)). `CLAUDE_REVIEW_EFFORT` prints the usual notice;
+  `CLAUDE_REVIEW_REASONING_EFFORT` prints the notice for the deprecated reasoning-effort name.
+- The reusable workflow has no input for the old name; use `effort`.
+
 ### Deprecated names
 
 `CLAUDE_REVIEW_BUDGET_USD`, `CLAUDE_REVIEW_MODEL` and so on (the same suffix as each setting
@@ -152,7 +198,8 @@ above) still work. When the `AGENT_REVIEW_` name is unset or empty and the old n
 value is used and the engine writes `CLAUDE_REVIEW_X is deprecated; use AGENT_REVIEW_X.` to stderr.
 The new name wins when both are set. This covers the settings in the table above only. The
 variables under [Other environment variables](#other-environment-variables), including
-`AGENT_REVIEW_COMMENT_AUTHOR`, have no old name.
+`AGENT_REVIEW_COMMENT_AUTHOR`, have no old name. `AGENT_REVIEW_REASONING_EFFORT` is a different
+kind of old name: see [Reasoning effort](#reasoning-effort).
 
 ### Dry run
 
@@ -348,7 +395,8 @@ When everything that changed is excluded or outside the requested scope, the run
 | Cost | Reported by Claude Code | Estimated from tokens at a per-million-token price |
 | Price needed | No | Yes. Built in for `gpt-6.1-sol` and `gpt-6-sol` ($2 input, $0.10 cached input, $10 output); any other model needs `AGENT_REVIEW_PRICE_PER_MTOK`, or the run stops in preflight. These are constants in the code, not a current price quote: check the vendor's pricing page. |
 | Dollar cap on a call | Soft | None; 15-minute time limit |
-| `PRICE_PER_MTOK`, `REASONING_EFFORT` | Ignored | Used |
+| `PRICE_PER_MTOK` | Ignored | Used |
+| `EFFORT` (new after v1.3.0) | Passed as `--effort` | Passed as `model_reasoning_effort` |
 | Dry run login | The machine's own Claude login | The machine's own Codex login (`$CODEX_HOME` or `~/.codex`) |
 
 Before any paid call, the CLI runs the provider's preflight and exits 1 if the binary does not
@@ -408,6 +456,7 @@ Each of these is a fixed behaviour of the engine at this release:
 | Message or symptom | Cause | Exit |
 | --- | --- | --- |
 | `AGENT_REVIEW_X must be a positive number, got "…".` (or `positive integer`) | A numeric setting is zero, negative, not finite, or (for lines and chars) not whole. | 2 |
+| `AGENT_REVIEW_EFFORT must be one of low, medium, high, xhigh, max, got "…".` | The effort (new after v1.3.0) is not one of the five names. With only the deprecated variable set, the message names `AGENT_REVIEW_REASONING_EFFORT`. | 2 |
 | `Unknown provider "…". Accepted values: claude-code, codex.` | `AGENT_REVIEW_PROVIDER` is something else. | 2 |
 | `GH_TOKEN is not set`, `GITHUB_REPOSITORY is not set`, `REQUEST is not set` | A required variable is missing or empty. | 2 |
 | `--repo-dir … is not a directory.` | The directory does not exist. | 2 |
