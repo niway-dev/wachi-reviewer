@@ -132,8 +132,53 @@ Every finding is labelled on two axes, each an emoji followed by its word, for e
 | `cleanup` | 🧹 | Duplication, dead code, a misleading name |
 | `question` | ❓ | Something the reviewer could not determine and asks the author |
 
+Two tests settle a severity that feels uncertain, and apply before the list above:
+
+- If the only thing wrong is a comment, docstring, name or documentation, the severity is
+  `consider` or lower, never `fix`. The exception is a document that makes users do something
+  harmful.
+- If a user can lose data or see a wrong result silently, the severity is `fix` or higher even
+  when the trigger is rare.
+
+A finding also carries a **confidence**, separate from severity: severity says how bad the finding
+is if it is true, confidence says how sure the reviewer is that it is true, given what it read.
+It is shown after the title, for example `🟠🐛 **Fix · bug: Face is lost (confidence high)**`.
+
+| Confidence | Meaning |
+| --- | --- |
+| `high` | The reviewer read the lines that establish every premise, and the failure follows from them |
+| `medium` | The argument holds, but a premise rests on code the reviewer did not read or a condition it could not confirm |
+| `low` | Plausible, not established |
+
+A `low` confidence finding at `fix` or above is posted with the topic `question`, worded as a
+question to the author. The engine does not enforce this; it is a rule in the prompt, and
+[precision](precision.md) tabulates verdicts by confidence so the rule can be checked. A finding
+without a confidence (the engine's own notices, reviews from before the field existed) shows none. The decision
+is in the [flow questions spec](specs/2026-10-31-flow-questions-and-evidence-design.md), decision 9.
+
 A repository's focus file (`.github/agent-review.md`) may say what to look for, but it may not add
-severities or topics: a label means the same thing in every repository that runs the reviewer.
+severities, topics or confidence levels: a label means the same thing in every repository that
+runs the reviewer.
+
+### The "What the change connects to" block
+
+Each batch also answers the **flow questions** (what a new action or call changes, which existing
+path does the same and what it does before and after, how the result reaches the user, what
+happens when background work finishes or the user goes Back, and what happens when the call
+fails) as `contracts`: one entry per question, with `action`, `location`, `equivalent_path`,
+`before_after`, `visible_effect`, `failure_mode`, a `status` (`closed` or `open`), `evidence`
+(`path:line` or `path:from-to`), and for an open entry an `open_question` and `candidates`, the
+files that would answer it. The review body shows them in a collapsed block after the summary and
+before the coverage table: open entries as questions with their candidate files, closed ones one
+line each.
+
+The engine checks the shape of each entry, and that every cited file exists in the checked-out
+head and every cited line is within it (the engine reads only inside the head). A citation that
+does not resolve prints a warning on stderr and marks the entry `evidence_checked: false`, which
+the block shows as "A citation did not resolve in the head"; the entry is not removed. The engine
+does not check that an answer is true. Contracts from several batches are merged: one entry per
+action and location. When the body would exceed its size limit, the contracts block is cut first:
+shrunk to what fits, or dropped, before the coverage table and the summary are touched.
 
 ## Exit codes
 
