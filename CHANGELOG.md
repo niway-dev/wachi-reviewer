@@ -5,6 +5,13 @@
 > (`FSL-1.1-ALv2`). The `LICENSE` file in each release tag says which applies. See the README and
 > [ADR 0013](docs/adr/0013-license-fsl-1-1-alv2.md).
 
+## [1.5.0](https://github.com/niway-dev/wachiman/compare/v1.4.0...v1.5.0) (2026-11-02)
+
+
+### Features
+
+* cap automatic runs per pull request and answer thread replies without a push ([c24be7a](https://github.com/niway-dev/wachiman/commit/c24be7a08d6172b68eb3cd64f1c5359f9de40ee0))
+
 ## [1.4.0](https://github.com/niway-dev/wachiman/compare/v1.3.0...v1.4.0) (2026-11-02)
 
 
