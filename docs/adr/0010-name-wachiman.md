@@ -1,7 +1,11 @@
-# ADR 0009: The name Wachiman and a brand line on every comment
+# ADR 0010: The name Wachiman and a brand line on every comment
 
 - **Status:** accepted. Supersedes decision 1 of [ADR 0005](0005-name-wachi-reviewer.md).
 - **Date:** 2026-10-31
+- **Numbering:** accepted as "ADR 0009" on 2026-10-31. A second record
+  ([ADR 0009](0009-investigation-is-requested-by-the-model-and-admitted-by-the-engine.md)) took the
+  same number the same day, so this one was renumbered 0010. The comment above `MENTION_ALIASES` in
+  `src/engine.ts` still says "ADR 0009" for the full-name alias; it means this record.
 
 ## Context
 

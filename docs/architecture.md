@@ -1,20 +1,29 @@
 # Architecture
 
-This document describes `main` after PR #6 and PR #13 (both merged): the engine runs from a
-sibling `engine/` checkout, the reviewed head is passed as `--repo-dir`, and the agent gets an
-allowlisted environment. Decisions and their reasons are in the ADRs
-([0001](adr/0001-distribution-and-trust.md), [0002](adr/0002-typescript-on-bun-zero-dependencies.md));
-this page is how the system works and what a change has to keep true.
+This document describes the engine as released in v1.3.0 (when it was written, `src/` and the
+workflows on `main` matched that release): the engine runs from a sibling `engine/` checkout, the reviewed head
+is passed as `--repo-dir`, and the agent gets an allowlisted environment. Decisions and their
+reasons are in the ADRs ([0001](adr/0001-distribution-and-trust.md),
+[0002](adr/0002-typescript-on-bun-zero-dependencies.md)); this page is how the system works and
+what a change has to keep true. For what to do when something goes wrong, see
+[troubleshooting](troubleshooting.md); for spend, see [costs](costs.md); for how to ask for a
+review, see [reviews](reviews.md).
+
+The review is advisory. It is posted as a `COMMENT` review, never approves or requests changes, and
+is not a required check. A finding labelled "Blocker" is a severity word, not a merge gate.
 
 ## Thesis
 
 The model only judges. Everything that code can decide, code decides, before and after the call.
 A model that is handed a whole pull request chooses what to read, rations its own effort, and
 posts in an inconsistent shape: some files get read closely, some not at all, and nobody can tell
-which. So the engine picks the files, orders them by risk, cuts them into batches the model can
-read completely, puts the numbered diff in front of it, forces a structured answer, checks that
-every file is accounted for, spends a budget it controls, and does the posting itself. The model
-returns findings and a list of what it read; the code turns that into a GitHub review.
+which. So the engine picks the files, orders them by a path-based risk guess, cuts them into batches,
+puts the numbered diff in front of the model, asks for a structured answer, checks that every
+selected file appears in the model's own list of files reviewed (or has a closed skip reason),
+hands each call a spend cap, and does the posting itself. The model returns findings and a list of
+what it says it read; the code turns that into a GitHub review. The engine cannot see what the
+model actually read, so "reviewed" always means "reported as reviewed by the model" (see
+[stage 6](#the-pipeline-stage-by-stage)).
 
 ## The flow
 
@@ -52,28 +61,40 @@ All names are in `src/engine.ts` unless a file is given.
    existed (marker right after `</sub>`) are read only while they come before the first signed
    review and were created before `LEGACY_CUTOFF` (2026-11-01); if that commit is behind the head, `compareFiles` narrows the review to what
    changed since (`status === "ahead"`), otherwise it reviews the whole pull request. `resolveScope`
-   turns `review <paths>` words into paths and ignores words that name no changed file.
+   turns `review <paths>` words into paths: a word counts only if it is the exact name of a
+   changed file or a directory prefix of one (there is no glob expansion), and any other word is
+   ignored with a log line. If every word misses, the scope is empty and the request runs as an
+   unscoped review (or, when the head was already reviewed, answers "Already reviewed").
    `filterFiles` then drops `DEFAULT_EXCLUDE` (lockfiles, build output, snapshots, source maps,
    generated files) plus `AGENT_REVIEW_EXCLUDE`. *Why:* paying a model to read a lockfile buys
    nothing, and re-reading commits it already saw buys less. Binary and very large files are not
    dropped here: GitHub sends no patch for them, and the prompt tells the model to read the file
-   itself or record a closed skip reason (`SKIP_REASONS`).
+   itself or record a closed skip reason (`SKIP_REASONS`). The list of changed files comes from
+   GitHub's paginated pull-request files endpoint; the engine does not check that list for
+   completeness, so a file GitHub leaves out is outside the review.
 
-2. **Risk score.** `riskScore` gives each path a weight: the highest matching rule in `RISK_RULES`
-   (workflows, process boundaries, credentials and access control, dependencies, migrations,
-   scripts, shell, infrastructure), else a base weight by `fileKind` (code 4, tests 2, docs 1).
-   *Why:* when money runs out, the part that was read must be the part where a defect costs most.
+2. **Risk score.** `riskScore` gives each path a weight from its path alone: the highest
+   matching rule in `RISK_RULES` (8 for workflows and `ipc`/`preload` directories; 7 for
+   credential-like names and `scripts/`; 6 for `package.json`, shared types, migrations/schema/db,
+   shell files and `infra/`; 5 for `main/`), else a base weight by `fileKind` (code 4, tests 2,
+   docs, styles and message files 1). A test or a document gets its kind's weight whatever its
+   path. This is a heuristic: it does not read file contents or understand a language, its rules
+   were taken from the first consumer's layout, and there is no per-repository configuration.
+   *Why:* when the budget runs out, the files not reached should be the ones a path convention
+   says matter least. It orders the work; it does not say a file is more or less likely to be
+   wrong.
 
 3. **Batching.** `planBatches` groups files by `moduleKey` so a module's code, tests and docs share
    a call, orders modules by their riskiest file, and packs them into batches of at most
    `AGENT_REVIEW_BATCH_LINES` changed lines and `AGENT_REVIEW_BATCH_CHARS` characters of diff. A
    file over either limit gets a batch of its own. Inside a batch, code comes before tests before
-   docs. *Why:* a batch the model can read in full keeps it from skimming, and risk order makes the
-   budget cut-off land on the least important files.
+   docs. The limits count changed lines and diff characters, not what fits in a model's context, and
+   an oversized file is still sent whole. *Why:* a smaller batch is meant to keep the model from
+   skimming, and risk order makes the budget cut-off land on the files the heuristic ranks lowest.
 
 4. **Prompt assembly.** `buildBatchPrompt` writes, in order: the pull request and commit, the
-   pointer to the ADRs, the full file list for orientation, the
-   batch's own file list, the line-number convention, the review instruction, the thread
+   pointer to the ADRs, the list of every selected file for orientation (excluded files are only
+   counted), the batch's own file list, the line-number convention, the review instruction, the thread
    instruction when open threads exist, the label rules (`RULES`: each severity with the test a
    finding must pass, each topic, the combination rules, and the instruction not to report that a
    decision record is edited, since the engine does that, and the evidence rules: cite the line
@@ -89,34 +110,52 @@ All names are in `src/engine.ts` unless a file is given.
    finding on it. *Why of the evidence rules:* in a real review the model stated a premise as fact
    that a line outside the diff's hunks disproved, and extended a correct fix to a code path whose
    comment said why it must not change; both cost the owner more than the extra reading costs.
-   Precision is measured from the owner's verdict replies (`docs/precision.md`). *Why of the
-   no-rationing sentence:* the model reasons about effort it cannot see; the harness owns the budget, so
+   Findings can be judged afterwards with the verdict convention in
+   [precision](precision.md). *Why of the no-rationing sentence:* the model reasons about effort it cannot see; the harness owns the budget, so
    the model should not trade coverage for it.
 
 5. **The provider call.** `reviewBatch` writes `pr.json` and `threads.json` to a scratch directory
-   and calls `deps.provider.run` with the read-only tools (`read`, `glob`, `grep`), `SCHEMA` as the
-   output schema (files reviewed, files skipped with a closed reason, findings, thread replies,
+   and calls `deps.provider.run` asking for the neutral read tools (`read`, `glob`, `grep`;
+   Claude Code gets exactly those three, Codex reads through shell commands in a read-only
+   sandbox), `SCHEMA` as the output schema (files reviewed, files skipped with a closed reason, findings, thread replies,
    summary), the head as a readable directory (the adapter starts the agent in an empty scratch
    directory, not in the head) and a per-batch spend cap. Paths the agent reports are made
    repository-relative afterwards (`relativisePaths`), because it reads by absolute path. *Why:* a structured
-   answer is what makes coverage checkable; read-only tools are what make the call safe to run
-   with the key (see the harness below).
+   answer is what makes the coverage check possible; limiting the agent to reading is what keeps
+   it from running commands in the process that holds the key (see the harness below; this is not
+   a sandbox).
 
-6. **Coverage check and retry.** `batchGaps` returns the files of the batch the model did not list
-   as reviewed. A skip counts only with a closed reason and only for a file GitHub sent no diff
-   for. If there are gaps and budget remains, the batch runs once more with only those files
-   (`retry: true` in the prompt). Files still unaccounted for after that make the review partial.
+6. **Coverage check and retry.** `batchGaps` returns the files of the batch the model did not list in
+   `files_reviewed`. A skip counts only with one of two closed reasons (`binary`,
+   `no_diff_and_unreadable`) and only for a file GitHub sent no patch for. If there are gaps and at
+   least `MIN_BATCH_USD` remains, the batch runs once more with only those files (`retry: true` in
+   the prompt); a batch whose first call returned nothing usable has all its files as gaps, so it
+   is retried the same way. Files still unaccounted for after that make the review partial: its
+   first line says "Partial review", counts the files and lists the ones not reviewed.
+   Coverage is therefore the model's own report checked against the selected files. It shows the
+   model claimed to cover every selected file; it is not a measurement of how much of a file was
+   read, and the engine has no way to observe reads. The expected set holds only the selected
+   files: lockfiles and other excluded files, files outside a requested scope and files missing
+   from GitHub's list are not in it, so "all N files reviewed" means all N selected files.
    *Why:* silence about a file is the failure that cannot be seen from the outside, so the code
-   asks again once and then reports honestly.
+   asks again once and then reports honestly what the model did and did not claim.
 
-7. **Budget arithmetic.** `review` tracks `spent` across the whole pull request. Each call is
-   capped at `min(AGENT_REVIEW_BATCH_BUDGET_USD, remaining)`. A batch is not started when less
-   than `MIN_BATCH_USD` (0.05) remains; its files are listed as "not reached: the pull request's
-   budget was spent". `attempt` catches a call that died without a result and counts it at its
-   cap, because what it spent is unknown. The cap passed to Claude Code is soft, so `spent` can
-   exceed the total slightly. If every batch ran out of budget, the review is a short body saying
-   so. *Why:* money, not pull request size, bounds the run, and an unknown cost is assumed to be
-   the worst case.
+7. **Budget arithmetic.** `review` tracks `spent` across one invocation, adding up the first
+   calls and retries of every batch. Each call is capped at `min(AGENT_REVIEW_BATCH_BUDGET_USD,
+   remaining)`. A batch is not started when less than `MIN_BATCH_USD` (0.05) remains; its files are
+   listed as "not reached: the pull request's budget was spent". `attempt` catches a call that
+   died without a result and counts it at its cap, because what it spent is unknown. The budget is
+   per run, not per pull request over time: every new `review` run starts again at zero, so an
+   automatic review plus later `/wachi review` runs each spend up to their own total. How firmly a
+   cap is enforced depends on the adapter. Claude Code receives `--max-budget-usd`, a soft cap that
+   can be overshot, so `spent` can exceed the total slightly. The Codex adapter is handed the cap
+   but does not enforce it: it estimates cost from token events using a built-in or overridden
+   price, and only a 15-minute `SIGKILL` timeout (reported as `budget`) ends a runaway call. A dry
+   run still calls the provider and spends. If no batch returned a result and a call ended on its
+   budget, the review is a short body saying so; if none returned a result for another reason, the
+   run fails with an error and posts nothing. *Why:* money, not pull request size, bounds the run,
+   and an unknown cost is assumed to be the worst case. See [costs](costs.md) for what that means
+   for a bill.
 
 8. **Merge and posting.** `mergeOutputs` joins the batches: `dedupeFindings` keeps one finding
    per path, line and topic (the higher severity wins, blocker > fix > consider > info), it merges
@@ -156,23 +195,34 @@ All names are in `src/engine.ts` unless a file is given.
    the body is near the limit, trims the Summary and coverage table first, so the result never
    exceeds `MAX_BODY_CHARS`. Any other error (auth, permission, rate limit, network) is rethrown:
    no degraded review is posted. Replies to
-   open threads are posted only for comment ids the engine itself handed over. *Why:* the model
+   open threads are posted only for comment ids the engine itself handed over; each is a separate
+   POST after the review, so if one fails the command stops with an error although the review is
+   already posted. *Why:* the model
    cannot approve, request changes, invent a thread id or move the incremental marker past a file
    nobody read.
 
 9. **The conversation path.** `comment` (called by `src/cli.ts comment`) first runs
    `operatorProblem` (an empty or template-placeholder operator is an error), then ignores a
-   comment whose author is not `AGENT_REVIEW_OPERATOR`, then `parseCommand` looks for the mention
-   (`/wachi` by default; `@agent-review` and `@claude` always). `review [paths]` runs the pipeline above;
-   anything else goes to `answer`: one provider call with `AGENT_REVIEW_ANSWER_BUDGET_USD`,
-   free-text output, the pull request metadata and full diff in a scratch directory, the same leak
-   check, posted as a pull request comment. Thread replies work through the review path: with a
-   previous marker, `openThreads` fetches the tool's unresolved threads (first comment by `github-actions` and
-   carrying the finding signature, or, until `LEGACY_CUTOFF`, an unsigned comment in the
-   old label format created before that date) and `openBotThreads` keeps only replies from `OWNER`, `MEMBER` or `COLLABORATOR`, so a stranger's reply on a public
-   repository never reaches the model. `assignThreads` hands each thread to the batch that holds
-   its file. *Why:* the operator gate is enforced twice (workflow and CLI) because only one of
-   them can fail loudly.
+   comment whose author is not `AGENT_REVIEW_OPERATOR`, then `parseCommand` looks in the first
+   matching line for the mention (the configured one, `/wachi` by default, or one of
+   `MENTION_ALIASES`: `/wachiman`, `@agent-review`, `@claude`; the keyword must start a word).
+   `review [paths]` runs the pipeline above; anything else goes to `answer`: one provider call
+   with `AGENT_REVIEW_ANSWER_BUDGET_USD`, free-text output, the pull request metadata, file list
+   and full diff in a scratch directory, the same leak check, posted as a pull request comment. It
+   has no batching, no coverage check and no thread handling.
+   *Thread replies.* They are handled only inside a `review` run, not as a conversation. With a
+   previous marker, `openThreads` fetches the tool's unresolved threads (first 100 threads, first
+   30 comments each; first comment by `github-actions` and carrying the finding signature, or,
+   before `LEGACY_CUTOFF`, an unsigned comment in the old label format created before that date)
+   and `openBotThreads` keeps only replies from `OWNER`, `MEMBER` or `COLLABORATOR`, so a
+   stranger's reply on a public repository never reaches the model. `assignThreads` hands each
+   thread to the batch that holds its file, and the model may answer with "Looks addressed" or
+   "Still open". Nothing triggers on a thread reply itself (the caller listens to
+   `issue_comment`, not to review comments), and a `review` on a head that was already reviewed
+   returns "Already reviewed" before threads are read. So a reply in a thread gets an answer only
+   at the next review run that has work: a new commit since the last marker, or an explicit
+   path. The engine never resolves a thread. *Why:* the operator gate is enforced twice (workflow
+   and CLI) because only one of them can fail loudly.
 
 ## The execution harness
 
@@ -181,11 +231,23 @@ All names are in `src/engine.ts` unless a file is given.
 | Job | Runs when | What it does |
 | --- | --- | --- |
 | `review` | `pull_request`, not a draft, head repository equals the calling repository, actor is not Dependabot | Checks the operator input, skips branches with a prefix in `skip_branch_prefixes`, then runs `cli.ts review` |
-| `on-demand` | `issue_comment` on a pull request, commenter login equals `operator`, body contains the mention, `@agent-review` or `@claude` | Checks the operator input, refuses a pull request whose head repository is not the calling repository, then runs `cli.ts comment` |
+| `on-demand` | `issue_comment` on a pull request, commenter login equals `operator`, body contains the mention input, `@agent-review` or `@claude` | Checks the operator input, refuses a pull request whose head repository is not the calling repository, then runs `cli.ts comment` |
 
-Both have a 30-minute timeout and a concurrency group per pull request (not per workflow, so a
-skipped `on-demand` never cancels a review). Both run with `contents: read` and
-`pull-requests: write` (`issues: read` for `on-demand`).
+Both have a 30-minute timeout and their own concurrency group per pull request with
+`cancel-in-progress: true` (the groups are per job, not per workflow, so a skipped `on-demand`
+never cancels a review; a newer run of the same job for the same pull request cancels the older
+one). Both run with `contents: read` and `pull-requests: write` (`issues: read` for `on-demand`).
+
+When a run starts is decided by the caller. The caller template listens for `pull_request` of
+type `opened` and `ready_for_review`, and `issue_comment` of type `created`, so a pull request
+gets one automatic review when it is opened or marked ready, and later pushes are reviewed when the
+operator asks for it.
+
+**The command gate.** The parser accepts `/wachiman` as an alias, but the workflow's `if:` only
+tests that the comment body contains the `mention` input, `@agent-review` or `@claude`. With the
+default `/wachi`, a `/wachiman` comment passes the gate because `/wachi` is a substring of it. With
+a custom `mention` that does not contain `/wachiman`, a `/wachiman` comment does not start the
+job. Use the configured mention as the command that always routes.
 
 **Sibling checkout layout.** The head goes into `head/` with `persist-credentials: false`. The
 engine goes into `engine/`, checked out from `job.workflow_repository` at `job.workflow_sha`, so
@@ -267,7 +329,7 @@ and the assumption that everyone who can push is trusted is what holds it togeth
 | `run(request)` | One call to completion: returns structured output or text, cost, turns, duration and a terminal reason (`success`, `budget`, `error`); throws when there is no result at all |
 
 The request carries the prompt, the head's directory (which an adapter must not use as the agent's working directory), extra readable directories, neutral tool
-names (`read`, `glob`, `grep`), the spend cap, an optional output schema and whether the prompt
+names (`read`, `glob`, `grep`), the spend cap (a soft one), an optional output schema and whether the prompt
 goes through stdin. `getProvider` in `src/providers/index.ts` maps a name to an adapter and
 rejects unknown names as a usage error.
 
@@ -276,15 +338,17 @@ the binary and its flags, the settings file, the child environment, tool-name ma
 terminal-reason extraction, the credential shape.
 
 **Rule for a second provider.** It is added only when a consumer needs it or a measured comparison
-is wanted, and it must bring its own sandbox story (no shell, no network beyond the model, no
-credentials in its environment), its own structured-output path and its own cost accounting.
+is wanted, and it must bring its own hardening story, with the tests that back it, its own
+structured-output path and its own cost accounting. The two adapters differ: Claude Code has no
+shell tool, while Codex reads through shell commands inside its read-only sandbox and has no
+per-call spend cap ([Codex adapter](providers/codex.md)).
 There is no plugin system. The interface is drawn from one example, so expect to redraw it when
 the second adapter does not fit.
 
 ## Configuration
 
 Settings are read once by `loadConfig` in `src/config.ts`; each `AGENT_REVIEW_X` falls back to the
-deprecated `CLAUDE_REVIEW_X` with a notice. Full descriptions are in [cli.md](cli.md).
+deprecated `CLAUDE_REVIEW_X` with a notice. Full descriptions are in [cli.md](cli.md) and [configuration](configuration.md).
 
 | Variable | Default | Where the default lives |
 | --- | --- | --- |
@@ -293,12 +357,14 @@ deprecated `CLAUDE_REVIEW_X` with a notice. Full descriptions are in [cli.md](cl
 | `AGENT_REVIEW_ANSWER_BUDGET_USD` | `1` | `src/config.ts`; input `answer_budget_usd` |
 | `AGENT_REVIEW_BATCH_LINES` | `1000` | `src/config.ts`; input `batch_lines` |
 | `AGENT_REVIEW_BATCH_CHARS` | `140000` | `src/config.ts`; input `batch_chars` |
-| `AGENT_REVIEW_MODEL` | `claude-sonnet-5-5` | `src/config.ts`; input `model` |
+| `AGENT_REVIEW_MODEL` | the provider's default: `claude-sonnet-5-5` (`claude-code`), `gpt-6.1-sol` (`codex`) | `DEFAULT_MODELS` in `src/providers/index.ts`; the workflow input `model` defaults to `claude-sonnet-5-5` |
 | `AGENT_REVIEW_PROVIDER` | `claude-code` | `src/config.ts` and `DEFAULT_PROVIDER` in `src/providers/index.ts`; input `provider` |
-| `AGENT_REVIEW_MENTION` | `/wachi` | `src/config.ts` and `DEFAULT_MENTION`; input `mention`; `@agent-review` and `@claude` are `MENTION_ALIASES` |
+| `AGENT_REVIEW_MENTION` | `/wachi` | `src/config.ts` and `DEFAULT_MENTION`; input `mention`; `/wachiman`, `@agent-review` and `@claude` are `MENTION_ALIASES` (see the command gate above for which the workflow routes) |
 | `AGENT_REVIEW_OPERATOR` | none (required by `comment`) | no default; validated by `operatorProblem`; input `operator` is required |
 | `AGENT_REVIEW_EXCLUDE` | none | `src/config.ts`; no workflow input |
 | `AGENT_REVIEW_DRY_RUN` | off | `src/config.ts`; no workflow input |
+| `AGENT_REVIEW_PRICE_PER_MTOK` | none | `src/config.ts`; `codex` only; no workflow input |
+| `AGENT_REVIEW_REASONING_EFFORT` | none | `src/config.ts`; `codex` only; no workflow input |
 | `AGENT_REVIEW_COMMENT_AUTHOR` | none | read in `src/cli.ts`; set by the `on-demand` job |
 
 The built-in exclude list (`DEFAULT_EXCLUDE`), risk rules (`RISK_RULES`), label rules (`RULES`,
@@ -322,11 +388,14 @@ and the copy-the-files install. The two sets must stay equal.
 - Model text is neutralised (`neutralise`) before it is posted, and ownership of a review or a
   thread is the `github-actions[bot]` login plus an engine-written signature, never the login
   alone. The unsigned legacy branches (`lastEngineMarker`, `isWachiFinding`, `precision.ts`) are a
-  deprecation window for items created before `LEGACY_CUTOFF` (2026-11-01); an unsigned item after
-  it is treated as another workflow's imitation. Delete the branches once the date has passed.
+  deprecation window for items created before `LEGACY_CUTOFF` (2026-11-01); an unsigned item created
+  at or after it is treated as another workflow's imitation. Delete the branches once the date has
+  passed.
 - The reviewed head is never the engine's working directory, and the engine never executes
   anything from it.
-- The agent gets read tools only, an allowlisted environment and no GitHub token.
+- The agent gets no GitHub token and an allowlisted environment. Claude Code gets read tools only;
+  Codex reads through shell commands inside a read-only sandbox (the reusable workflow does not
+  install Codex).
 - Budgets and batch sizes come from the caller's inputs or the environment, never from the pull
   request.
 - Only the operator can start an on-demand run, and only replies from `OWNER`, `MEMBER` or
@@ -337,17 +406,42 @@ and the copy-the-files install. The two sets must stay equal.
 
 ## Known limits and open issues
 
-- Open issues: [#5](https://github.com/niway-dev/wachiman/issues/5) (the ADR directory the
-  prompt names is fixed), [#8](https://github.com/niway-dev/wachiman/issues/8) (one account
-  moving the floating `v1` tag changes the code every consumer runs with its key),
-  [#11](https://github.com/niway-dev/wachiman/issues/11)
-  (posted output is checked only for the key's exact value and shape, so an encoded key passes).
-  Issue [#9](https://github.com/niway-dev/wachiman/issues/9) (pin actions by SHA) is still
-  open although the workflows are pinned on `main`.
-- The review is advisory and trusts everyone who can push to the repository.
-- Two adapters exist, Claude Code and Codex (ADR 0004). The reusable workflow installs only Claude Code so far.
-- Thread context is bounded: the first 100 review threads and 30 comments per thread.
-- The risk rules and `moduleKey` encode path conventions that fit some repository layouts
-  (`apps/*/src`, `ipc`, `preload`, `main`) better than others.
-- An on-demand answer is one call over the whole diff with no batching or coverage check.
-- Neither workflow job has been exercised end to end in a full paid run on a hosted runner.
+What this page cannot promise, in the order a reader is most likely to rely on it:
+
+- **Coverage is reported by the model.** The engine checks the model's list of files reviewed
+  against the files it selected. It cannot confirm that every line was read, and it does not
+  verify that GitHub's file list was complete. Excluded files and files outside a requested scope
+  are not part of "all files reviewed".
+- **Risk order is a path heuristic.** It decides which files are read first when money runs out.
+  The rules fit some layouts (`apps/*/src`, `ipc`, `preload`, `main`) better than others and are
+  not configurable per repository. The decision-record directory the prompt names, `docs/adr/`, is
+  fixed too ([#5](https://github.com/niway-dev/wachiman/issues/5)).
+- **Spend caps are per call and soft.** Claude Code's cap can be overshot, Codex has no dollar cap
+  (only a 15-minute timeout), a dry run still spends, and each run has its own total
+  ([costs](costs.md)).
+- **Thread replies are not a conversation.** A reply is answered only during a later review run
+  that has work; nothing triggers on the reply, and `answer` never reads threads.
+- **`/wachiman` routing.** It always parses, but the workflow gate routes it only with the default
+  mention (see the command gate above).
+- **An on-demand answer** is one call over the whole diff with no batching or coverage check.
+- **Trust.** The review trusts everyone who can push to the repository
+  ([SECURITY.md](../SECURITY.md)). Posted output is checked only for the key's exact value and
+  for strings shaped like a provider key, so an encoded key passes
+  ([#11](https://github.com/niway-dev/wachiman/issues/11)). One account with repository admin
+  rights can move the floating `v1` tag and so change the code every `@v1` consumer runs with its
+  key ([#8](https://github.com/niway-dev/wachiman/issues/8)); exact tags are protected by a
+  ruleset that has an admin bypass ([releasing](releasing.md)).
+- **Providers.** Two adapters exist, Claude Code and Codex ([ADR 0004](adr/0004-codex-provider.md)).
+  The reusable workflow installs only Claude Code.
+- **Unverified.** [SECURITY.md](../SECURITY.md) lists what has not been verified, including that
+  the sibling-checkout layout and the hardening flags have been through a full paid review. This
+  page does not claim more than that list.
+
+Planned work is not in the code described above: ADRs
+[0006](adr/0006-repository-review-policy.md), [0007](adr/0007-learned-memory-by-draft-pr.md),
+[0008](adr/0008-thread-follow-up-authority.md) and
+[0009](adr/0009-investigation-is-requested-by-the-model-and-admitted-by-the-engine.md) are
+proposals with their specs in `docs/specs/`. Actions in this repository's own workflows are
+pinned by commit SHA ([#9](https://github.com/niway-dev/wachiman/issues/9) is closed), and review
+instructions come from the base commit ([#10](https://github.com/niway-dev/wachiman/issues/10) is
+closed).
