@@ -57,6 +57,8 @@ code and the call sites #69 already collects (C).
 - Reading other bots' comments.
 - A durable pull request summary between runs.
 - Fork and untrusted pull requests (ADR 0001 non-goal).
+- A GitHub App or hosted worker that receives webhooks and decides when to run. See "Why the
+  triggers live in the consumer" below.
 
 ## Failures this must protect against
 
@@ -163,6 +165,34 @@ the code did, not what it should do. Commit messages are claims to verify. Say '
 - **Harness.** `bench.sh` rounds open fresh pull requests, which tests a static delta but not the
   marker, `since` or threads. A sequential mode (push the next commit onto the same replay pull
   request) is needed for the incremental path.
+
+### Why the triggers live in the consumer, and what an App would change
+
+**The cost of having no server.** A reusable workflow cannot declare triggers: `on:` lives only in
+the consumer's caller file. Every new event this design needs (`synchronize` in #68,
+`pull_request_review_comment` in B) is therefore a manual edit in every consumer repository, and a
+release bump alone does not turn it on. kaipu-record needed its own change for push reviews
+(niway-dev/kaipu-record#477) and will need another for B.
+
+**How Pullfrog avoids it.** Pullfrog's workflow in kaipu-record listens only to
+`workflow_dispatch`. Its GitHub App receives the repository's webhooks on Pullfrog's server, which
+decides what to do and dispatches the workflow through the API with a prompt; every Pullfrog run on
+kaipu-record#475 has `event=workflow_dispatch` and a title such as "Review new commits on #475".
+Changing when Pullfrog reviews is a change on its server, invisible to the repository.
+
+**Accepted for now.** Wachiman keeps the caller model (ADR 0001: no hosted service). To keep later
+changes inside Wachiman, the caller should subscribe once to every event Wachiman can use, and the
+reusable workflow decides per event through inputs and defaults (as #68 does with
+`review_on_push`). The price is a runner start for events Wachiman ignores: seconds of Actions,
+no model call.
+
+**If we build an App.** A small worker (for example a serverless function behind a GitHub App)
+would receive the webhooks, apply the same rules (operator gate, reviewed-head gate, ceiling) and
+start the consumer's workflow with `workflow_dispatch`, keeping the model call and the key in the
+consumer's Actions as today. That moves trigger policy into Wachiman, and it also makes Wachiman an
+operated service holding an App private key, which reopens ADR 0001 (see the App identity design,
+#38). Not designed here; this is the place to start if consumers' trigger edits become the main
+friction.
 
 ## References
 
