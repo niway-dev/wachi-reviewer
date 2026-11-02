@@ -610,12 +610,14 @@ export function buildReview(input: {
   batches?: BatchReport[];
   /** From `ProviderAdapter.modelLabel()`, for the footer. */
   modelLabel: string;
+  /** The reasoning effort the run used, shown in the footer so every review states it. */
+  effort?: string;
   /** The configured mention keyword, for the hint on how to ask for the rest. */
   mention?: string;
   /** Review-instruction files this pull request edits, and the base commit they were read from. */
   instructionChanges?: { files: string[]; baseSha: string };
 }): Review {
-  const { output, files, headSha, since, scoped, costUsd, batches = [], modelLabel } = input;
+  const { output, files, headSha, since, scoped, costUsd, batches = [], modelLabel, effort } = input;
   const mention = input.mention ?? DEFAULT_MENTION;
   const commentable = new Map(files.map((f) => [f.filename, commentableLines(f.patch ?? "")]));
   const comments: InlineComment[] = [];
@@ -674,7 +676,7 @@ export function buildReview(input: {
     );
   }
   const batchCount = batches.length > 1 ? ` · ${batches.length} batches` : "";
-  parts.push(`<sub>${modelLabel}${batchCount} · $${costUsd.toFixed(2)}</sub>`);
+  parts.push(`<sub>${modelLabel}${effort ? ` · effort ${effort}` : ""}${batchCount} · $${costUsd.toFixed(2)}</sub>`);
   parts.push(SIGNATURE.review);
   // The next `review` request starts from this commit, so only a review that covered everything
   // may move it; a scoped or partial one would leave the rest never reviewed.
@@ -1434,6 +1436,7 @@ export function review(deps: Deps, repo: string, pr: number, words: string[]) {
     costUsd: spent,
     batches: reports,
     modelLabel: deps.provider.modelLabel(),
+    effort: config.effort,
     mention: config.mention,
     instructionChanges: {
       files: changedInstructionFiles(prFiles.map((f) => f.filename)),
@@ -1660,7 +1663,7 @@ nothing else. Write in English.`;
   const result = runProvider(deps, prompt, dir, deps.config.answerBudgetUsd);
   if (result.isError || !result.text)
     throw new Error(`The agent did not answer (${result.terminalReason}).`);
-  const body = `${BRAND}\n\n${neutralise(result.text)}\n\n<sub>${deps.provider.modelLabel()} · $${result.costUsd.toFixed(2)}</sub>`;
+  const body = `${BRAND}\n\n${neutralise(result.text)}\n\n<sub>${deps.provider.modelLabel()} · effort ${deps.config.effort} · $${result.costUsd.toFixed(2)}</sub>`;
   refuseLeak(deps, [body]);
   if (deps.config.dryRun) {
     deps.log(body);

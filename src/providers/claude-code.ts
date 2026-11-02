@@ -7,7 +7,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { locatePrompt } from "./locate";
-import type { NeutralTool, ProviderAdapter, ProviderRequest, ProviderResult } from "./types";
+import { DEFAULT_EFFORT, type Effort, type NeutralTool, type ProviderAdapter, ProviderRequest, ProviderResult } from "./types";
 
 const BINARY = "claude";
 const SETTINGS_FILE = "claude-code.settings.json";
@@ -89,6 +89,8 @@ export function buildClaudeArgs(opts: {
   addDirs: string[];
   budgetUsd: number;
   model: string;
+  /** Always passed: Claude Code's own default effort has changed between releases (`--effort` since 2.1.72). */
+  effort: Effort;
   settings: string;
   tools: NeutralTool[];
   schema?: object;
@@ -99,6 +101,8 @@ export function buildClaudeArgs(opts: {
     "-p",
     "--model",
     opts.model,
+    "--effort",
+    opts.effort,
     "--max-budget-usd",
     String(opts.budgetUsd),
     "--restricted",
@@ -139,6 +143,7 @@ export class ClaudeCodeProvider implements ProviderAdapter {
     private readonly opts: {
       model: string;
       requireApiKey: boolean;
+      effort?: Effort;
       /** For tests: another executable, and another folder for the settings file. */
       binary?: string;
       settingsDir?: string;
@@ -185,6 +190,7 @@ export class ClaudeCodeProvider implements ProviderAdapter {
       addDirs: [request.cwd, ...request.addDirs],
       budgetUsd: request.maxBudgetUsd,
       model: this.opts.model,
+      effort: this.opts.effort ?? DEFAULT_EFFORT,
       settings: findEngineSettings(this.settingsDir),
       tools: request.allowedTools,
       schema: request.outputSchema,

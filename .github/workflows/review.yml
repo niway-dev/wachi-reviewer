@@ -63,6 +63,10 @@ on:
         description: Model the agent uses
         type: string
         default: claude-sonnet-5-5
+      effort:
+        description: Reasoning effort the model runs at (low, medium, high, xhigh or max); printed in every review footer
+        type: string
+        default: high
       provider:
         description: Agent provider; only claude-code exists
         type: string
@@ -209,6 +213,7 @@ jobs:
           AGENT_REVIEW_BATCH_LINES: ${{ inputs.batch_lines }}
           AGENT_REVIEW_BATCH_CHARS: ${{ inputs.batch_chars }}
           AGENT_REVIEW_MODEL: ${{ inputs.model }}
+          AGENT_REVIEW_EFFORT: ${{ inputs.effort }}
           AGENT_REVIEW_PROVIDER: ${{ inputs.provider }}
           AGENT_REVIEW_MENTION: ${{ inputs.mention }}
           AGENT_REVIEW_OPERATOR: ${{ inputs.operator }}
@@ -323,6 +328,7 @@ jobs:
           AGENT_REVIEW_BATCH_LINES: ${{ inputs.batch_lines }}
           AGENT_REVIEW_BATCH_CHARS: ${{ inputs.batch_chars }}
           AGENT_REVIEW_MODEL: ${{ inputs.model }}
+          AGENT_REVIEW_EFFORT: ${{ inputs.effort }}
           AGENT_REVIEW_PROVIDER: ${{ inputs.provider }}
           AGENT_REVIEW_MENTION: ${{ inputs.mention }}
           AGENT_REVIEW_OPERATOR: ${{ inputs.operator }}

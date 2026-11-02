@@ -55,6 +55,7 @@ on its install step to pin the hash. The script installs only the binary; it doe
 | An output schema | `--output-format json --json-schema <schema>` |
 | The prompt via stdin | The prompt, preceded by the absolute paths of the head and the scratch files, on stdin, never as an argument (a large diff would exceed Linux's 128 KB limit) |
 | The model | `--model <AGENT_REVIEW_MODEL>` |
+| The reasoning effort | `--effort <AGENT_REVIEW_EFFORT>` (default `high`, always passed; Claude Code's own default changed in 2.1.94) |
 
 Always added by the adapter, whatever the engine asks: `--restricted`, `--strict-mcp-config`,
 `--settings <claude-code.settings.json>` and `--disallowedTools
@@ -121,7 +122,8 @@ load. Hosted runners have none.
 - `--strict-mcp-config`: no MCP servers other than those passed explicitly (none are).
 - `--tools Read,Glob,Grep`: the only tools that exist.
 - `--settings` and `--disallowedTools`: deny `Bash` and reads of `/proc`.
-- `--max-budget-usd`: a soft, client-side cap. A call can overshoot it.
+- `--max-budget-usd`: a soft, client-side cap. A call can overshoot it. How the engine adds up
+  these caps across batches and retries: [costs.md](../costs.md).
 
 ## What is verified and what is not
 

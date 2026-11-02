@@ -131,12 +131,12 @@ All in `src/engine.ts` unless noted; every change has a test in `src/engine.test
 
 One release of `agent-review`. Consumers pinned to an exact tag (ADR 0001 amendment) receive it
 through their Dependabot pull request; nothing in the caller workflow changes. The first review
-after the upgrade on `gymtrack-monorepo` is the acceptance check: its findings carry the new
+after the upgrade on a consumer repository is the acceptance check: its findings carry the new
 labels, an edited ADR produces a body notice and no thread, and no finding carries `other`.
 
 ## References
 
 - Current labels and rules: `src/engine.ts` (`label`, `RULES`, `buildReview`).
-- The review that motivated this change: gymtrack-monorepo pull request #70, whose only finding,
+- The review that motivated this change: a pull request in a consumer repository, whose only finding,
   a stale documentation cell with a one-line fix, was posted as `Note (other)`.
 - Decision record: `docs/adr/0003-two-axis-finding-labels.md`.
