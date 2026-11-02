@@ -37,8 +37,9 @@ What was true when this was decided:
    similar functionality. Internal use, non-commercial education and research, and professional
    services to a licensee are Permitted Purposes. A commercial license is a separate agreement
    with NIWAY (Niway S.A.C.), requested at contact@niway.com and agreed case by case.
-4. **Each version becomes Apache 2.0 two years after it is made available.** This is the license's
-   "Grant of Future License", applied per version, not per project.
+4. **Each version published under FSL-1.1-ALv2 becomes Apache 2.0 two years after it is made
+   available.** This is the license's "Grant of Future License", applied per version, not per
+   project.
 5. **The project is called source available, never open source,** and copy names the license.
 6. **Outside contributions require a contributor license agreement** in which the contributor keeps
    copyright and grants NIWAY the right to license the contribution on other terms. A DCO
