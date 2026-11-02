@@ -186,6 +186,12 @@ reusable workflow decides per event through inputs and defaults (as #68 does wit
 `review_on_push`). The price is a runner start for events Wachiman ignores: seconds of Actions,
 no model call.
 
+**The installer ships with them on.** Reviewing every push is the expected behaviour, so both
+caller templates (`templates/agent-review-caller.yml`, `templates/caller-workflow.yml`) and the
+README sample list `synchronize` by default (#68). When B ships they also list
+`pull_request_review_comment: created`. Opting out is an input (`review_on_push: false`) or
+removing the event from the caller, never the default.
+
 **If we build an App.** A small worker (for example a serverless function behind a GitHub App)
 would receive the webhooks, apply the same rules (operator gate, reviewed-head gate, ceiling) and
 start the consumer's workflow with `workflow_dispatch`, keeping the model call and the key in the
