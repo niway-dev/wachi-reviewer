@@ -40,31 +40,23 @@ topics to the finding labels (see [cli.md](cli.md#finding-labels)).
 
 ## Optional: settings
 
-The reusable workflow takes these `with:` inputs. Only `operator` is required.
+The reusable workflow takes `with:` inputs; only `operator` is required. The full list, with each
+input's type, default, what it changes and which engine setting it feeds, is in
+[configuration.md](configuration.md#inputs). That page is the only place the inputs are listed.
 
-| Input | Default | Meaning |
-| --- | --- | --- |
-| `operator` | none | Login allowed to start on-demand runs |
-| `mention` | `/wachi` | Command that starts a run (`@agent-review` and `@claude` are also accepted) |
-| `budget_usd` | `3` | Most one pull request review may spend |
-| `batch_budget_usd` | `0.75` | Most one batch may spend |
-| `answer_budget_usd` | `1` | Most one on-demand question may spend |
-| `batch_lines` | `1000` | Changed lines per batch |
-| `batch_chars` | `140000` | Diff characters per batch |
-| `model` | `claude-sonnet-5-5` | Model the agent uses |
-| `effort` | `high` | Reasoning effort: `low`, `medium`, `high`, `xhigh` or `max`; printed in every review footer |
-| `max_turns` | `40` | Most agent turns one call may take (`--max-turns`); a call that reaches it is reported and its files get one retry |
-| `call_timeout_s` | `900` | Wall-clock seconds one call may run before it is killed; keep it well under the 30 minute job limit |
-| `provider` | `claude-code` | Agent provider |
-| `claude_code_version` | `2.1.304` | Pinned Claude Code version |
-| `claude_code_sha256` | empty | Optional SHA-256 of the Claude Code binary for the runner platform; empty reads it from the publisher manifest (see [providers/claude-code.md](providers/claude-code.md)) |
-| `bun_version` | `1.3.4` | Pinned Bun version |
-| `skip_branch_prefixes` | `release-please--` | Comma-separated head branch prefixes that are not reviewed |
-| `review_on_push` | `true` | Review each push to an open pull request, only the new commits. Needs `synchronize` in the caller's `pull_request` types (the template has it). Each push can spend up to `budget_usd`; set `false` to review only on open, ready for review and `/wachi review`. See [reviews.md](reviews.md#reviews-on-push) |
+The settings you are most likely to change first:
 
-Input defaults are kept in sync by hand with the defaults in `src/config.ts`. CI pins Bun
-separately from the `bun_version` input. `AGENT_REVIEW_EXCLUDE` and `AGENT_REVIEW_DRY_RUN` have no
-input here; they exist only in the copy-the-files install.
+- `budget_usd` (default `3`): the most one pull request review may spend.
+- `model` and `effort`: the model and its reasoning effort; the effort is printed in every review
+  footer.
+- `review_on_push` (default `true`): review each push to an open pull request. It needs
+  `synchronize` in the caller's `pull_request` types (the template has it). Each push can spend up
+  to `budget_usd`; see [reviews.md](reviews.md#reviews-on-push).
+- `claude_code_sha256`: pins the Claude Code binary by hash; see
+  [providers/claude-code.md](providers/claude-code.md).
+
+`AGENT_REVIEW_EXCLUDE` and `AGENT_REVIEW_DRY_RUN` have no input; they exist only in the
+copy-the-files install ([configuration.md](configuration.md#engine-settings)).
 
 ## Checks before enabling
 
