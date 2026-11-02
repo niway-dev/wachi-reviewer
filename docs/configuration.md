@@ -3,16 +3,17 @@
 Every setting Wachiman reads, where it comes from, what it defaults to and what it changes. For a
 first install read [install.md](install.md) instead; this page is for looking things up.
 
-This page describes the code on the `main` branch. The latest release is v1.3.0, and one setting
-here is newer than it: [reasoning effort](#reasoning-effort), marked **new in the release after
-v1.3.0**. Everything else on this page is the same in v1.3.0. If your caller pins a tag, check
+This page describes the code on the `main` branch. The latest release is v1.3.0, and some settings
+here are newer than it: [reasoning effort](#reasoning-effort), the turn cap and call timeout, and
+`review_on_push`, each marked **new in the release after v1.3.0**. Everything else on this page is
+the same in v1.3.0. If your caller pins a tag, check
 `src/config.ts` and `.github/workflows/review.yml` at that tag. Wachiman is advisory: no setting
 here makes a review approve, request changes or block a merge.
 
 - [Where settings come from](#where-settings-come-from)
 - [Reusable workflow](#reusable-workflow): [inputs](#inputs), [secret](#secret),
   [permissions](#permissions), [when each job runs](#when-each-job-runs)
-- [Engine settings](#engine-settings) (`AGENT_REVIEW_*`), including [reasoning effort](#reasoning-effort)
+- [Engine settings](#engine-settings) (`AGENT_REVIEW_*`), including [reasoning effort](#reasoning-effort) and the [turn cap and call timeout](#turn-cap-and-call-timeout)
 - [Other environment variables](#other-environment-variables)
 - [Mentions and commands](#mentions-and-commands)
 - [Budgets](#budgets)
@@ -64,14 +65,17 @@ engine through the environment variable in the third column; those variables are
 | `batch_chars` | number | `AGENT_REVIEW_BATCH_CHARS` | `140000` | Characters of diff per batch. A whole number. |
 | `model` | string | `AGENT_REVIEW_MODEL` | `claude-sonnet-5-5` | The model name passed to the provider. The workflow always sends a value, so the engine's per-provider default never applies here. |
 | `effort` | string | `AGENT_REVIEW_EFFORT` | `high` | Reasoning effort: `low`, `medium`, `high`, `xhigh` or `max`. **New in the release after v1.3.0; not in v1.3.0, whose workflow has no such input.** Sent to the engine by both jobs and used by both providers. See [Reasoning effort](#reasoning-effort). |
+| `max_turns` | number | `AGENT_REVIEW_MAX_TURNS` | `40` | Most agent turns one provider call may take. A whole number. **New in the release after v1.3.0; not in v1.3.0.** Sent as `--max-turns` to Claude Code, the only provider the workflow runs. A call that reaches the cap is reported and its files get one retry. See [Turn cap and call timeout](#turn-cap-and-call-timeout). |
+| `call_timeout_s` | number | `AGENT_REVIEW_CALL_TIMEOUT_S` | `900` | Wall-clock seconds one provider call may run before the process is killed. A whole number. **New in the release after v1.3.0; not in v1.3.0.** Keep it well under the job's 30-minute limit. See [Turn cap and call timeout](#turn-cap-and-call-timeout). |
 | `provider` | string | `AGENT_REVIEW_PROVIDER` | `claude-code` | Selects the adapter. The workflow installs only Claude Code and passes only `ANTHROPIC_API_KEY`, so `claude-code` is the only value that can work in it. Setting `codex` fails before any call (the default `model` has no Codex price, and the Codex binary and key are not provided). Codex is available from the CLI only: [providers/codex.md](providers/codex.md). |
 | `claude_code_version` | string | installer `CLAUDE_CODE_VERSION` | `2.1.304` | The exact Claude Code version downloaded. See [Claude Code installer](#claude-code-installer). |
 | `claude_code_sha256` | string | installer `CLAUDE_CODE_SHA256` | empty | SHA-256 of the Claude Code binary for the runner's platform (`linux-x64` on `ubuntu-latest`). Empty means the installer reads the expected hash from the publisher's manifest. |
 | `bun_version` | string | `oven-sh/setup-bun` | `1.3.4` | The Bun version the engine runs on. Not an engine setting. CI in this repository pins Bun separately. |
 | `skip_branch_prefixes` | string | the automatic job's first gate step | `release-please--` | Comma-separated head-branch prefixes whose pull requests the automatic job does not review. Spaces are removed; empty entries are ignored, so an empty value skips nothing. It has no effect on the on-demand job. |
+| `review_on_push` | boolean | the automatic job's `if:` condition | `true` | Review each push (`synchronize`) to an open pull request, only the commits new since the last complete review ([ADR 0011](adr/0011-review-every-push-incrementally.md)). **New in the release after v1.3.0; not in v1.3.0.** It needs `synchronize` in the caller's `pull_request` types (the templates have it); the workflow cannot add a trigger. Each push can spend up to `budget_usd`. Set `false` to review only on open, ready for review and `/wachi review`. It has no effect on the on-demand job. See [reviews.md](reviews.md#reviews-on-push). |
 
-Numeric inputs that the engine rejects (zero, negative, not a number, a fraction for `batch_lines`
-or `batch_chars`) fail the run with the message shown under
+Numeric inputs that the engine rejects (zero, negative, not a number, a fraction for `batch_lines`,
+`batch_chars`, `max_turns` or `call_timeout_s`) fail the run with the message shown under
 [Validation and errors](#validation-and-errors).
 
 Defaults in `review.yml` and in `src/config.ts` are kept in sync by hand. Where they differ, the
@@ -103,7 +107,7 @@ to run the job.
 | | `review` (automatic) | `on-demand` |
 | --- | --- | --- |
 | Event | `pull_request` | `issue_comment` on a pull request |
-| Runs when | The pull request is not a draft, its head is in the same repository (not a fork), and the actor is not `dependabot[bot]`. The caller's `on:` decides which activity types arrive; the template lists `opened` and `ready_for_review`. | The commenter's login equals `operator` and the comment body contains `mention`, `@agent-review` or `@claude` (a substring check, see [Mentions and commands](#mentions-and-commands)). |
+| Runs when | The pull request is not a draft, its head is in the same repository (not a fork), and the actor is not `dependabot[bot]`. The caller's `on:` decides which activity types arrive; the templates list `opened`, `ready_for_review` and `synchronize`. For a `synchronize` (a push) the input `review_on_push` must also be `true`. | The commenter's login equals `operator` and the comment body contains `mention`, `@agent-review` or `@claude` (a substring check, see [Mentions and commands](#mentions-and-commands)). |
 | Skips | A head branch starting with a `skip_branch_prefixes` entry. The job still starts and fails first if `operator` is invalid. | A fork pull request: the job stops with an error before reading the head. It has no draft, Dependabot or branch-prefix gate. |
 | Checks `operator` | Only that it is set | That it is set, and the login match above |
 | Time limit | 30 minutes | 30 minutes |
@@ -133,6 +137,8 @@ applies.
 | `AGENT_REVIEW_PROVIDER` | string | `claude-code` | `claude-code`, `codex` | Which adapter runs the agent. Any other value is a usage error (exit 2) that lists the accepted ones. | n/a |
 | `AGENT_REVIEW_PRICE_PER_MTOK` | string | unset | `input,cached_input,output`: three numbers, each 0 or more | USD per million tokens, used to turn Codex's token counts into dollars. Takes precedence over the built-in price, also for a model that has one. | Codex only; ignored by Claude |
 | `AGENT_REVIEW_EFFORT` | string | `high` | `low`, `medium`, `high`, `xhigh`, `max` | How hard the model reasons. Always passed explicitly, so a change in a provider CLI's own default cannot alter reviews. **New in the release after v1.3.0.** Any other value is a usage error (exit 2). See [Reasoning effort](#reasoning-effort). | both |
+| `AGENT_REVIEW_MAX_TURNS` | integer | `40` | Whole number, greater than 0 | Most agent turns one provider call may take. **New in the release after v1.3.0.** Normal batches take 5–12 turns; the cap only stops a looping run. See [Turn cap and call timeout](#turn-cap-and-call-timeout). | Claude: sent as `--max-turns`. Codex: no such flag; ignored |
+| `AGENT_REVIEW_CALL_TIMEOUT_S` | integer | `900` | Whole number, greater than 0 | Wall-clock seconds one provider call may run. Past it the process is killed (`SIGKILL`) and the call ends as `timeout`, with cost reported as 0 because the CLI prints nothing before it ends. **New in the release after v1.3.0.** See [Turn cap and call timeout](#turn-cap-and-call-timeout). | both |
 | `AGENT_REVIEW_REASONING_EFFORT` | string | unset | same as `AGENT_REVIEW_EFFORT` | Deprecated name of `AGENT_REVIEW_EFFORT`. Still read, with a notice on stderr, and `AGENT_REVIEW_EFFORT` wins when both are set. See [Reasoning effort](#reasoning-effort). | both |
 | `AGENT_REVIEW_DRY_RUN` | flag | off | `1` | Only the exact value `1` turns it on. Reads GitHub, runs the provider, and prints the review and replies instead of posting them. It still spends: see [Dry run](#dry-run). | both |
 | `AGENT_REVIEW_EXCLUDE` | list | none | Comma-separated globs | Extra files to leave out, on top of the [built-in list](#excluded-files). | both |
@@ -141,7 +147,7 @@ How values are read:
 
 - A set but empty variable counts as unset.
 - Numbers are parsed with JavaScript's `Number()` and must be finite and greater than 0, so `1e3`
-  is accepted. `BATCH_LINES` and `BATCH_CHARS` must also be whole numbers.
+  is accepted. `BATCH_LINES`, `BATCH_CHARS`, `MAX_TURNS` and `CALL_TIMEOUT_S` must also be whole numbers.
 - `AGENT_REVIEW_PRICE_PER_MTOK` is split on commas, each part trimmed and parsed the same way. A
   part that is empty after trimming is read as `0`, so `2,,10` means a cached-input price of 0.
 - `AGENT_REVIEW_EXCLUDE` is split on commas and empty entries are dropped. Entries are not trimmed,
@@ -190,6 +196,28 @@ The old variable, `AGENT_REVIEW_REASONING_EFFORT`, is deprecated:
   [Deprecated names](#deprecated-names)). `CLAUDE_REVIEW_EFFORT` prints the usual notice;
   `CLAUDE_REVIEW_REASONING_EFFORT` prints the notice for the deprecated reasoning-effort name.
 - The reusable workflow has no input for the old name; use `effort`.
+
+### Turn cap and call timeout
+
+Two limits stop one provider call that runs too long. Both are **new in the release after
+v1.3.0**; v1.3.0 has neither (its only hard limit was a fixed 15 minutes for Codex).
+
+| | Turn cap | Call timeout |
+| --- | --- | --- |
+| Workflow input | `max_turns` (default `40`) | `call_timeout_s` (default `900`) |
+| Environment variable | `AGENT_REVIEW_MAX_TURNS` | `AGENT_REVIEW_CALL_TIMEOUT_S` |
+| Accepted values | A whole number greater than 0 | A whole number greater than 0 |
+| Claude Code | Passed as `--max-turns`. A call that reaches it ends as `turns` and returns no review. | The process is ended with `SIGKILL` and the call ends as `timeout`. |
+| Codex | Ignored: `codex exec` has no such flag. | Same limit and signal as Claude Code. |
+
+- Normal batches take 5 to 12 turns; the turn cap only stops a looping run.
+- A call that ends as `turns` has its files retried once, if at least $0.05 is left. A call that ends as `timeout` is not
+  retried, and its cost is reported as 0 because the CLI prints nothing before it ends, so the
+  money it spent is not in the review's total.
+- Keep `call_timeout_s` well under the job's 30-minute limit: a job that reaches that limit is
+  cancelled by GitHub.
+- What a stopped call looks like in a review, and how to react, is in
+  [costs.md](costs.md) and [troubleshooting.md](troubleshooting.md).
 
 ### Deprecated names
 
@@ -335,8 +363,9 @@ What "cap" means depends on the provider:
 - **Claude Code:** the call's cap is passed as `--max-budget-usd`, a soft, client-side limit. A
   call can overshoot it, so a review can spend more than `budget_usd`.
 - **Codex:** the cap is never enforced. Cost is estimated from the token counts Codex reports,
-  using the price table or `AGENT_REVIEW_PRICE_PER_MTOK`, and the only hard limit on a call is
-  15 minutes of run time, after which the process is killed. Budgets still decide how many calls
+  using the price table or `AGENT_REVIEW_PRICE_PER_MTOK`, and the only hard limit on a call is its
+  run time (`AGENT_REVIEW_CALL_TIMEOUT_S`, 15 minutes by default, after which the process is
+  killed). There is no turn cap. Budgets still decide how many calls
   start, but not how much one call spends.
 
 Smaller edges:
