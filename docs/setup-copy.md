@@ -71,7 +71,8 @@ What changes when you migrate:
 | Old `CLAUDE_REVIEW_*` variables | Rename to the `AGENT_REVIEW_*` input above ([cli.md](cli.md#deprecated-names)) |
 | `AGENT_REVIEW_EXCLUDE` | no input |
 | `AGENT_REVIEW_DRY_RUN` | no input |
-| `AGENT_REVIEW_PRICE_PER_MTOK`, `AGENT_REVIEW_REASONING_EFFORT` | no input (Codex settings) |
+| `AGENT_REVIEW_REASONING_EFFORT` | `effort` from the release after v1.3.0 (variable `AGENT_REVIEW_EFFORT`, default `high`, both providers); the old name still works but is deprecated and ignored when the new one is set ([configuration.md](configuration.md)). At v1.3.0 there is no input |
+| `AGENT_REVIEW_PRICE_PER_MTOK` | no input (Codex setting) |
 | Edits you made to the copied engine, such as `RISK_RULES` weights | not carried over |
 
 There is no engine configuration file. The risk weights and the built-in excludes (lockfiles,
