@@ -60,7 +60,11 @@ All names are in `src/engine.ts` unless a file is given.
    signature (`readSignedMarker`); one anywhere else is ignored. Reviews posted before signatures
    existed (marker right after `</sub>`) are read only while they come before the first signed
    review and were created before `LEGACY_CUTOFF` (2026-11-01); if that commit is behind the head, `compareFiles` narrows the review to what
-   changed since (`status === "ahead"`), otherwise it reviews the whole pull request. `resolveScope`
+   changed since (`status === "ahead"`). Otherwise the branch was rewritten, and `rebaseDelta` compares
+   the pull request's own change at that commit (`base...last`) with the head's, per file, by the
+   rows that add or remove a line (`changeSignature`) or by an identical blob: no change posts a
+   one-line review that only moves the marker, some change reviews only those files, and a change
+   that cannot be compared reviews the whole pull request. `resolveScope`
    turns `review <paths>` words into paths: a word counts only if it is the exact name of a
    changed file or a directory prefix of one (there is no glob expansion), and any other word is
    ignored with a log line. If every word misses, the scope is empty and the request runs as an
@@ -150,7 +154,7 @@ All names are in `src/engine.ts` unless a file is given.
    cap is enforced depends on the adapter. Claude Code receives `--max-budget-usd`, a soft cap that
    can be overshot, so `spent` can exceed the total slightly. The Codex adapter is handed the cap
    but does not enforce it: it estimates cost from token events using a built-in or overridden
-   price, and only a 15-minute `SIGKILL` timeout (reported as `budget`) ends a runaway call. A dry
+   price, and only the per-call `SIGKILL` timeout (15 minutes by default, reported as `timeout`) ends a runaway call. A dry
    run still calls the provider and spends. If no batch returned a result and a call ended on its
    budget, the review is a short body saying so; if none returned a result for another reason, the
    run fails with an error and posts nothing. *Why:* money, not pull request size, bounds the run,
@@ -230,7 +234,7 @@ All names are in `src/engine.ts` unless a file is given.
 
 | Job | Runs when | What it does |
 | --- | --- | --- |
-| `review` | `pull_request`, not a draft, head repository equals the calling repository, actor is not Dependabot | Checks the operator input, skips branches with a prefix in `skip_branch_prefixes`, then runs `cli.ts review` |
+| `review` | `pull_request` (opened, ready for review, and each push when the caller lists `synchronize` and `review_on_push` is not `false`), not a draft, head repository equals the calling repository, actor is not Dependabot | Checks the operator input, skips branches with a prefix in `skip_branch_prefixes`, then runs `cli.ts review` |
 | `on-demand` | `issue_comment` on a pull request, commenter login equals `operator`, body contains the mention input, `@agent-review` or `@claude` | Checks the operator input, refuses a pull request whose head repository is not the calling repository, then runs `cli.ts comment` |
 
 Both have a 30-minute timeout and their own concurrency group per pull request with
@@ -239,9 +243,11 @@ never cancels a review; a newer run of the same job for the same pull request ca
 one). Both run with `contents: read` and `pull-requests: write` (`issues: read` for `on-demand`).
 
 When a run starts is decided by the caller. The caller template listens for `pull_request` of
-type `opened` and `ready_for_review`, and `issue_comment` of type `created`, so a pull request
-gets one automatic review when it is opened or marked ready, and later pushes are reviewed when the
-operator asks for it.
+type `opened`, `ready_for_review` and `synchronize`, and `issue_comment` of type `created`, so a
+pull request gets an automatic review when it is opened or marked ready and one for each push, which
+covers only the commits new since the last complete review ([ADR 0011](adr/0011-review-every-push-incrementally.md)).
+The reusable workflow cannot add a trigger: a caller that does not list `synchronize` gets no push
+reviews, whatever the pinned release is.
 
 **The command gate.** The parser accepts `/wachiman` as an alias, but the workflow's `if:` only
 tests that the comment body contains the `mention` input, `@agent-review` or `@claude`. With the
@@ -326,7 +332,7 @@ and the assumption that everyone who can push is trusted is what holds it togeth
 | `preflight()` | Throws before any call is paid for when the binary, settings or credential is missing |
 | `modelLabel()` | Text for the review footer |
 | `leaksSecret(texts)` | True when any text holds a credential of this provider; the engine throws and posts nothing |
-| `run(request)` | One call to completion: returns structured output or text, cost, turns, duration and a terminal reason (`success`, `budget`, `error`); throws when there is no result at all |
+| `run(request)` | One call to completion: returns structured output or text, cost, turns, duration and a terminal reason (`success`, `budget`, `turns`, `timeout`, `error`); throws when there is no result at all |
 
 The request carries the prompt, the head's directory (which an adapter must not use as the agent's working directory), extra readable directories, neutral tool
 names (`read`, `glob`, `grep`), the spend cap (a soft one), an optional output schema and whether the prompt
@@ -357,6 +363,8 @@ deprecated `CLAUDE_REVIEW_X` with a notice. Full descriptions are in [cli.md](cl
 | `AGENT_REVIEW_ANSWER_BUDGET_USD` | `1` | `src/config.ts`; input `answer_budget_usd` |
 | `AGENT_REVIEW_BATCH_LINES` | `1000` | `src/config.ts`; input `batch_lines` |
 | `AGENT_REVIEW_BATCH_CHARS` | `140000` | `src/config.ts`; input `batch_chars` |
+| `AGENT_REVIEW_MAX_TURNS` | `40` | `DEFAULT_MAX_TURNS` in `src/providers/types.ts`, read in `src/config.ts`; input `max_turns` |
+| `AGENT_REVIEW_CALL_TIMEOUT_S` | `900` | `DEFAULT_CALL_TIMEOUT_S` in `src/providers/types.ts`, read in `src/config.ts`; input `call_timeout_s` |
 | `AGENT_REVIEW_MODEL` | the provider's default: `claude-sonnet-5-5` (`claude-code`), `gpt-6.1-sol` (`codex`) | `DEFAULT_MODELS` in `src/providers/index.ts`; the workflow input `model` defaults to `claude-sonnet-5-5` |
 | `AGENT_REVIEW_PROVIDER` | `claude-code` | `src/config.ts` and `DEFAULT_PROVIDER` in `src/providers/index.ts`; input `provider` |
 | `AGENT_REVIEW_MENTION` | `/wachi` | `src/config.ts` and `DEFAULT_MENTION`; input `mention`; `/wachiman`, `@agent-review` and `@claude` are `MENTION_ALIASES` (see the command gate above for which the workflow routes) |

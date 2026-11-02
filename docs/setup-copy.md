@@ -109,6 +109,7 @@ are in [costs.md](costs.md).
 | When | What happens |
 | --- | --- |
 | A pull request opens ready for review, or leaves draft | A review in batches; after a complete, unscoped review, later requests cover only what changed since it |
+| A push to an open pull request (`synchronize`) | Review of only the commits new since the last review; a rebase with no change in the pull request's lines posts one line and calls no model. Each push can spend up to `AGENT_REVIEW_BUDGET_USD`; remove `synchronize` from the trigger to opt out |
 | The operator comments `/wachi review` | A review of what changed since the last complete, unscoped review; when it has work to do, it also answers the replies in its open threads |
 | `/wachi review <path>…` | A review of those paths only; words that name no changed file are ignored |
 | Any other `/wachi …` by the operator | The question is answered as a comment |

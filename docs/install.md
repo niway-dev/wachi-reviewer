@@ -40,7 +40,7 @@ You need:
    ```yaml
    name: Agent review
    on:
-     pull_request: { types: [opened, ready_for_review] }
+     pull_request: { types: [opened, ready_for_review, synchronize] }
      issue_comment: { types: [created] }
    permissions: { contents: read, pull-requests: write, issues: read }
    jobs:
@@ -128,8 +128,12 @@ pull request from then on, including ones opened earlier.
 
 ### Things to know before you comment
 
-- **A push does not start a review.** The caller runs on `opened` and `ready_for_review` only.
-  Push your changes, then comment `/wachi review`.
+- **A push starts a review of the new commits.** The template lists `synchronize`, and the
+  `review_on_push` input is `true` by default, so each push to an open pull request is reviewed
+  (only the commits new since the last complete review), and each push can spend up to
+  `budget_usd`. A caller written before ADR 0011 lists only `opened` and `ready_for_review`:
+  bumping the pin does not add `synchronize`, so edit the caller. To review only on request,
+  remove `synchronize` or pass `review_on_push: false` ([reviews.md](reviews.md#reviews-on-push)).
 - **An unchanged head gets no new review.** If the head commit was already reviewed completely
   and you ask again without paths, the reply is a short review saying
   `Already reviewed at abc1234` and nothing is analysed. To look at it again anyway, name a
@@ -210,7 +214,7 @@ rules it is reviewed under. See [review-policy.md](review-policy.md).
 Only `operator` is required. Every other input, with its default, type and the environment
 setting it becomes, is in [configuration.md](configuration.md). The ones people change first
 are `mention` (the command word), the budgets (`budget_usd`, `batch_budget_usd`,
-`answer_budget_usd`) and `skip_branch_prefixes`. Budgets apply per run, not per month, and the
+`answer_budget_usd`), `skip_branch_prefixes` and `review_on_push`. Budgets apply per run, not per month, and the
 Claude Code limit on a call is a soft client-side cap, so it can be exceeded
 ([costs.md](costs.md)).
 
