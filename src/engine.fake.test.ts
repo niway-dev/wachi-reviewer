@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { loadConfig } from "./config";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GhError, comment, review, type Deps, type GhFn, type ReviewOutput } from "./engine";
@@ -476,4 +476,109 @@ describe("comment with an operator that is not a real login", () => {
       expect(provider.requests).toHaveLength(0);
     });
   }
+});
+
+describe("call-site evidence reaches the batch", () => {
+  const NEW = "src/master-copies-panel.tsx";
+  const files = [
+    {
+      filename: NEW,
+      additions: 2,
+      deletions: 0,
+      patch: "@@ -0,0 +1,2 @@\n+const drag = () => {\n+  window.electronAPI.startFileDrag(item.path);",
+    },
+  ];
+  const SIBLING = "src/export-status-cards.tsx";
+
+  const run = (git: Deps["git"]) => {
+    const headDir = mkdtempSync(join(tmpdir(), "head-"));
+    mkdirSync(join(headDir, "src"));
+    writeFileSync(
+      join(headDir, SIBLING),
+      "const onDrag = () => {\n  markCopySeen(id);\n  window.electronAPI.startFileDrag(path);\n};\n",
+    );
+    const posted: { review?: { body: string; comments: unknown[] } } = {};
+    const provider = new FakeProvider([() => ({ structuredOutput: out({ files_reviewed: [NEW], summary: "ok" }) })]);
+    const warnings: string[] = [];
+    const logs: string[] = [];
+    const deps: Deps = {
+      gh: fakeGh(posted, {}, files),
+      provider,
+      config: loadConfig({}),
+      repoDir: headDir,
+      log: (l) => void logs.push(l),
+      warn: (l) => void warnings.push(l),
+      git,
+    };
+    review(deps, "o/r", 7, []);
+    return { provider, posted, warnings, logs };
+  };
+
+  test("evidence.json is written to the run dir and the prompt carries the slice and the comparison task", () => {
+    const git: Deps["git"] = (args) => {
+      expect(args[args.indexOf("-e") + 1]).toBe("startFileDrag");
+      return {
+        status: 0,
+        stdout: `${SIBLING}:3:  window.electronAPI.startFileDrag(path);\n${NEW}:2:  window.electronAPI.startFileDrag(item.path);`,
+      };
+    };
+    const r = run(git);
+    const request = r.provider.requests[0];
+    const runDir = request.addDirs[0];
+    const doc = JSON.parse(readFileSync(join(runDir, "evidence.json"), "utf8"));
+    expect(doc.provenance).toBe("text_match");
+    expect(doc.symbols).toHaveLength(1);
+    expect(doc.symbols[0].call_sites.map((c: { file: string }) => c.file)).toEqual([SIBLING]);
+
+    const prompt = request.prompt;
+    expect(prompt).toContain("compare\nthe new call site with the sibling call sites listed");
+    expect(prompt).toContain("not a verdict");
+    expect(prompt).toContain("markCopySeen(id);");
+    expect(prompt).toContain(`Full list: ${runDir}/evidence.json`);
+    // After the file-accounting paragraph, before the rules.
+    expect(prompt.indexOf("<evidence")).toBeGreaterThan(prompt.indexOf("Review every file of this part"));
+    expect(prompt.indexOf("<evidence")).toBeLessThan(prompt.indexOf("<diff>"));
+    expect(r.logs.some((l) => /^evidence: 1 symbol\(s\) found, 1 call site\(s\), \d+ bytes, \d+ ms, complete$/.test(l))).toBe(true);
+    expect(request.allowedTools).toEqual(["read", "glob", "grep"]);
+  });
+
+  test("a failing git never fails the review: a warning, an empty file, no evidence in the prompt", () => {
+    const r = run(() => ({ status: 128, stdout: "", error: "fatal: not a git repository" }));
+    const request = r.provider.requests[0];
+    expect(r.posted.review).toBeDefined();
+    expect(r.warnings.join("\n")).toContain("Call-site evidence skipped");
+    const doc = JSON.parse(readFileSync(join(request.addDirs[0], "evidence.json"), "utf8"));
+    expect(doc.symbols).toEqual([]);
+    expect(doc.status).toBe("truncated");
+    expect(request.prompt).not.toContain("<evidence");
+    expect(request.prompt).not.toContain("sibling call sites");
+  });
+
+  test("a git that throws is also survived", () => {
+    const r = run(() => {
+      throw new Error("boom");
+    });
+    expect(r.posted.review).toBeDefined();
+    expect(r.warnings.join("\n")).toContain("boom");
+    expect(r.provider.requests[0].prompt).not.toContain("<evidence");
+  });
+
+  test("a batch with no call-like added lines runs no git at all", () => {
+    const quiet = [{ filename: NEW, additions: 1, deletions: 0, patch: "@@ -0,0 +1 @@\n+const a = 1;" }];
+    const headDir = mkdtempSync(join(tmpdir(), "head-"));
+    const provider = new FakeProvider([() => ({ structuredOutput: out({ files_reviewed: [NEW], summary: "ok" }) })]);
+    const deps: Deps = {
+      gh: fakeGh({}, {}, quiet),
+      provider,
+      config: loadConfig({}),
+      repoDir: headDir,
+      log: () => {},
+      warn: () => {},
+      git: () => {
+        throw new Error("git must not run");
+      },
+    };
+    review(deps, "o/r", 7, []);
+    expect(provider.requests[0].prompt).not.toContain("<evidence");
+  });
 });

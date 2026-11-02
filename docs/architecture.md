@@ -94,7 +94,8 @@ All names are in `src/engine.ts` unless a file is given.
 
 4. **Prompt assembly.** `buildBatchPrompt` writes, in order: the pull request and commit, the
    pointer to the ADRs, the list of every selected file for orientation (excluded files are only
-   counted), the batch's own file list, the line-number convention, the review instruction, the thread
+   counted), the batch's own file list, the line-number convention, the review instruction, the call-site
+   evidence (when there is any; see [Call-site evidence](#call-site-evidence-evidencejson)), the thread
    instruction when open threads exist, the label rules (`RULES`: each severity with the test a
    finding must pass, each topic, the combination rules, and the instruction not to report that a
    decision record is edited, since the engine does that, and the evidence rules: cite the line
@@ -114,7 +115,7 @@ All names are in `src/engine.ts` unless a file is given.
    [precision](precision.md). *Why of the no-rationing sentence:* the model reasons about effort it cannot see; the harness owns the budget, so
    the model should not trade coverage for it.
 
-5. **The provider call.** `reviewBatch` writes `pr.json` and `threads.json` to a scratch directory
+5. **The provider call.** `reviewBatch` writes `pr.json`, `threads.json` and `evidence.json` to a scratch directory
    and calls `deps.provider.run` asking for the neutral read tools (`read`, `glob`, `grep`;
    Claude Code gets exactly those three, Codex reads through shell commands in a read-only
    sandbox), `SCHEMA` as the output schema (files reviewed, files skipped with a closed reason, findings, thread replies,
@@ -223,6 +224,57 @@ All names are in `src/engine.ts` unless a file is given.
    at the next review run that has work: a new commit since the last marker, or an explicit
    path. The engine never resolves a thread. *Why:* the operator gate is enforced twice (workflow
    and CLI) because only one of them can fail loudly.
+
+## Call-site evidence (`evidence.json`)
+
+Implements the floor of decision 4 and decision 5 of the
+[flow-questions spec](specs/2026-10-31-flow-questions-and-evidence-design.md); the model-side
+half of that spec (`contracts`, `confidence`, admitted investigation, ADR 0009) is separate work.
+Code: `src/evidence.ts`; `gatherEvidence` in `src/engine.ts` calls it once per provider call.
+
+*Why:* in the [2026-11-01 benchmark](benchmark/2026-11-01/README.md) the bugs Wachiman missed
+sat in sibling callers outside the diff. On kaipu-record #465 the new Drag handle called
+`startFileDrag` without `markCopySeen`; the sibling caller in `export-status-cards.tsx` pairs the
+two, and the model never opened it. The same class: #464 and #467.
+
+Before each provider call the engine:
+
+1. takes the added lines of the batch's source files (`ts`, `tsx`, `js`, `jsx`, `mjs`, `cjs`, `go`,
+   `py`, `rs`, `java`, `kt`, `swift`, `vue`, `svelte`) and extracts call-like names with regular
+   expressions: `foo(`, `.foo(`, qualified calls such as `window.electronAPI.startFileDrag(`, and
+   string literals that name a channel or event (`"recording-ready:show"` given to `invoke`,
+   `send`, `on`, `emit` and similar, or assigned to a `*CHANNEL*` or `*EVENT*` constant). A small
+   stop list drops keywords, builtins, test helpers, React hooks and generic verbs, and any name
+   the batch's own added lines define (`extractCalledSymbols`, `planEvidence`);
+2. ranks them (qualified calls and channel strings first, then by how many of the batch's files use
+   the name) and keeps 12;
+3. runs one `git grep -n -I -w -F` per name in the head, over source extensions, skipping
+   `node_modules`, `dist`, `build`, `vendor`, `.next`, minified files and `.d.ts`, and drops matches
+   in the batch's own files, imports and comment lines. It keeps at most 6 call sites per name,
+   production code before tests and calls before mere mentions, each with 4 lines of context on
+   each side cut to 100 characters, and a best-effort `definition_guess` (`collectEvidence`);
+4. writes `evidence.json` (at most 16 KB; detail is cut before names are dropped) next to
+   `pr.json`, and inlines a slice of at most 6 KB in the prompt: per name, the counts, the
+   definition guess and the first two call sites with their excerpts, with a pointer to the file
+   (`renderEvidenceSlice`). A short paragraph tells the model to compare each new call with the
+   siblings listed. With no name that has another call site, nothing is added to the prompt.
+
+Every entry carries `provenance: "text_match"` and `status: "complete"` or `"truncated"` (set when a
+cap cut its results); the file has a `status` too. The step has a 20-second wall clock; names not
+searched when it runs out are listed in `not_searched`. It never fails the review: if `git` fails
+or throws, the engine warns, writes an empty file and goes on. One log line per call reports
+names found, call sites kept, bytes and milliseconds.
+
+**What it is not.** It is a text search, not name resolution: it misses aliased imports and
+renamed handlers (`libraryChanged` and `onLibraryChanged`), and it can list a local variable that
+shares a name with the symbol. The list is evidence for the model, not a verdict, and the prompt
+says so. A tree-sitter layer for those misses is decision 14 of the spec and is not built.
+
+**Trust.** The head is untrusted: excerpts are repository text, the slice is wrapped in an
+`<evidence>` element whose closing tag is escaped inside excerpts, and the prompt calls them
+content, not instructions. The engine runs `git` with the head as its working directory but with a
+minimal environment (no token) and `core.fsmonitor` off; the git configuration is the checkout's
+own, which a pull request cannot change. It reads excerpts only from regular files inside the head.
 
 ## The execution harness
 
@@ -392,7 +444,8 @@ and the copy-the-files install. The two sets must stay equal.
   at or after it is treated as another workflow's imitation. Delete the branches once the date has
   passed.
 - The reviewed head is never the engine's working directory, and the engine never executes
-  anything from it.
+  anything from it. The one exception is `git grep` for call-site evidence, which uses the head as
+  its working directory and reads, never runs, its files ([Call-site evidence](#call-site-evidence-evidencejson)).
 - The agent gets no GitHub token and an allowlisted environment. Claude Code gets read tools only;
   Codex reads through shell commands inside a read-only sandbox (the reusable workflow does not
   install Codex).
