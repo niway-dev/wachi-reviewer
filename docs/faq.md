@@ -143,8 +143,11 @@ to the model in an order based on their paths, which is a heuristic. See
 
 ### Why did my reply in a thread get no answer?
 
-A reply starts nothing. Wachiman reads threads only during a later review that has work to do.
-See [reviews.md](reviews.md).
+If your caller lists `pull_request_review_comment` (the templates do), your reply starts a short
+thread-reply run, but only when you are the `operator`, only once the head was reviewed (a reply
+within seconds of a push is answered by that push's review), and only while the pull request is under
+`auto_budget_usd`. A collaborator's or a stranger's reply starts nothing. A caller written earlier
+has to add the trigger ([upgrading.md](upgrading.md)). See [reviews.md](reviews.md#reply-to-a-finding).
 
 ### What does a dry run cost?
 
