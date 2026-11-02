@@ -115,7 +115,7 @@ Design decisions are recorded as ADRs in [docs/adr/](docs/adr/), starting with
 
 Wachiman is **source available**, not open source. It is licensed under the
 [Functional Source License, Version 1.1, ALv2 Future License](LICENSE) (`FSL-1.1-ALv2`), a
-[Fair Source](https://fair.io/) license. Copyright 2026 NIWAY.
+[Fair Source](https://fair.io/) license. Copyright 2026 Niway S.A.C.
 
 - **You may** use it for any purpose except a Competing Use: run it on your own repositories and
   in your company, read and modify it, fork it for internal use, use it for non-commercial

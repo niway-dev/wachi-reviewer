@@ -2,8 +2,8 @@
 
 **Version 0.1, draft, 2026-11-01.** Written for the project; not yet reviewed by a lawyer.
 
-This agreement is between you ("You") and NIWAY ("NIWAY"), the publisher of Wachiman.
-<!-- TODO(owner): replace "NIWAY" with the legal entity name and type, and add its country of registration. -->
+This agreement is between you ("You") and NIWAY (Niway S.A.C., a company incorporated in Peru and
+based in Lima; "NIWAY"), the publisher of Wachiman.
 It applies to every Contribution You submit once You have accepted it.
 
 ## In one minute
@@ -75,7 +75,8 @@ Except as stated above, Contributions are provided "as is", without warranties o
 
 ## 8. Governing law
 
-<!-- TODO(owner): governing law and venue. Not known; do not publish this agreement without it. -->
+This agreement is governed by the laws of Peru. The courts of Lima, Peru, have jurisdiction over
+any dispute about it.
 
 ## How to sign
 

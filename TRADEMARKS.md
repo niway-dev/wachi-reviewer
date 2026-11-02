@@ -1,8 +1,6 @@
-<!-- TODO(owner): "NIWAY" below is the name used in LICENSE. Replace it with the legal name of the owner of the marks once it is confirmed, and decide whether to state a governing law. Delete this comment when done. -->
-
 # Wachiman trademark policy
 
-Last updated: 2026-11-01
+Last updated: 2026-11-02
 
 This policy says what you may do with the name and logo of Wachiman without asking, what needs
 permission, and how to ask. It is short on purpose. If you are unsure, ask: you will not get in
@@ -19,7 +17,8 @@ In short:
 
 ## 1. What is covered
 
-NIWAY uses the following as trademarks (Wachiman™). This policy applies to them whether or not they
+The following are trademarks of NIWAY (Niway S.A.C., a company incorporated in Peru and based in
+Lima), used as Wachiman™. They are not registered. This policy applies to them whether or not they
 are registered anywhere.
 
 - **The name "Wachiman".**

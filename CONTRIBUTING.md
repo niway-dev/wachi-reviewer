@@ -1,8 +1,8 @@
 # Contributing to Wachiman
 
 Wachiman is maintained by Cristian Sotomayor ([@csdev19](https://github.com/csdev19)) and published
-by NIWAY under the [Functional Source License](LICENSE) (`FSL-1.1-ALv2`). It is source available,
-not open source. It is a small project handled on a best-effort basis, with no response-time
+by NIWAY (Niway S.A.C.) under the [Functional Source License](LICENSE) (`FSL-1.1-ALv2`). It is
+source available, not open source. It is a small project handled on a best-effort basis, with no response-time
 promise.
 
 ## Before you write code
