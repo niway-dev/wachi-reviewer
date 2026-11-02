@@ -4,7 +4,7 @@
   "description": "Advisory pull request reviews by an agent CLI, run in your own GitHub Actions with your own key",
   "private": false,
   "type": "module",
-  "license": "AGPL-3.0-only",
+  "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/niway-dev/wachiman.git"
