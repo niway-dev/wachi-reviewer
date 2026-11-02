@@ -100,11 +100,13 @@ All names are in `src/engine.ts` unless a file is given.
    pointer to the ADRs, the list of every selected file for orientation (excluded files are only
    counted), the batch's own file list, the line-number convention, the review instruction, the call-site
    evidence (when there is any; see [Call-site evidence](#call-site-evidence-evidencejson)), the thread
-   instruction when open threads exist, the label rules (`RULES`: each severity with the test a
+   instruction when open threads exist, the flow questions (`FLOW_QUESTIONS`, below), the label rules (`RULES`: each severity with the test a
    finding must pass, each topic, the combination rules, and the instruction not to report that a
    decision record is edited, since the engine does that, and the evidence rules: cite the line
    behind every premise of a "blocker" or "fix" or ask it as a "question", suggest a fix only for
-   the failure shown, search all callers of a shared contract, no escape clauses), the
+   the failure shown, search all callers of a shared contract, no escape clauses; the two
+   severity tests for comment-only problems and silent data loss; the definition of
+   `confidence`), the
    repository's instructions
    (`renderInstructions`, see below) and last the diff. `annotateDiff` prefixes each diff
    line with its line number in the file at the head, so a finding's `line` is one GitHub can anchor
@@ -112,7 +114,21 @@ All names are in `src/engine.ts` unless a file is given.
    the argument-length limit. It includes the no-rationing sentence: "You do not manage a budget:
    the harness that runs you enforces its own limits, so never shorten your reading to save
    effort." The review instruction also asks the model to read a file in full before reporting a
-   finding on it. *Why of the evidence rules:* in a real review the model stated a premise as fact
+   finding on it. *Flow questions.* `FLOW_QUESTIONS` is its own paragraph just before the rules. For
+   every new user action, screen state or call into code the part does not change, the model
+   answers: what it changes; which existing path does the same and what that path does before and
+   after; how the result reaches what the user sees; for state loaded once or in the background,
+   what happens when the work finishes, on leave-and-return and on browser or router Back (a
+   remount under the same history entry); what the platform does by default with an event the code
+   does not handle; and, for every new async call, IPC handler, window or process creation or file
+   read, what happens when it rejects, times out, never delivers or the sender is not who is
+   expected, and whether the failure is visible. The pull request body is named as the author's
+   claim to verify, not a summary to inherit. *Why:* in the
+   [2026-11-01 benchmark](benchmark/2026-11-01/README.md) the bugs Wachiman missed were questions
+   the prompt never asked; the reasoning is in the
+   [spec](specs/2026-10-31-flow-questions-and-evidence-design.md) and
+   [ADR 0009](adr/0009-investigation-is-requested-by-the-model-and-admitted-by-the-engine.md).
+   *Why of the evidence rules:* in a real review the model stated a premise as fact
    that a line outside the diff's hunks disproved, and extended a correct fix to a code path whose
    comment said why it must not change; both cost the owner more than the extra reading costs.
    Findings can be judged afterwards with the verdict convention in
@@ -122,10 +138,16 @@ All names are in `src/engine.ts` unless a file is given.
 5. **The provider call.** `reviewBatch` writes `pr.json`, `threads.json` and `evidence.json` to a scratch directory
    and calls `deps.provider.run` asking for the neutral read tools (`read`, `glob`, `grep`;
    Claude Code gets exactly those three, Codex reads through shell commands in a read-only
-   sandbox), `SCHEMA` as the output schema (files reviewed, files skipped with a closed reason, findings, thread replies,
-   summary), the head as a readable directory (the adapter starts the agent in an empty scratch
+   sandbox), `SCHEMA` as the output schema (files reviewed, files skipped with a closed reason, findings with a
+   confidence, `contracts`, thread replies, summary), the head as a readable directory (the adapter starts the agent in an empty scratch
    directory, not in the head) and a per-batch spend cap. Paths the agent reports are made
-   repository-relative afterwards (`relativisePaths`), because it reads by absolute path. *Why:* a structured
+   repository-relative afterwards (`relativisePaths`), because it reads by absolute path.
+   `checkOutput` then checks what the schema cannot: a finding's confidence is `high`, `medium`
+   or `low`, and each `contracts` entry has the right shape and cites lines that exist in the
+   checked-out head (`src/contracts.ts`: a file that exists, a line within its length, never
+   outside the head). A citation that does not resolve is a warning on stderr and
+   `evidence_checked: false` on the entry; the engine never judges whether an answer is true.
+   *Why:* a structured
    answer is what makes the coverage check possible; limiting the agent to reading is what keeps
    it from running commands in the process that holds the key (see the harness below; this is not
    a sandbox).
@@ -164,7 +186,9 @@ All names are in `src/engine.ts` unless a file is given.
 
 8. **Merge and posting.** `mergeOutputs` joins the batches: `dedupeFindings` keeps one finding
    per path, line and topic (the higher severity wins, blocker > fix > consider > info), it merges
-   skips, and treats a file reviewed in a retry as reviewed. `adrNotices` then adds one
+   skips, merges the contracts of every batch (`mergeContracts`: one per action and location, a
+   closed entry whose citations resolved beats one whose did not, which beats an open one), and
+   treats a file reviewed in a retry as reviewed. `adrNotices` then adds one
    `⚪🏛️ Info · adr` finding for every reviewed file under a `docs/adr/` directory, deduplicated with
    the model's findings the same way. `buildReview` labels each finding with `label` (two emojis,
    then severity, topic and title in words, from the `SEVERITY` and `TOPIC` tables, the only place
@@ -177,7 +201,9 @@ All names are in `src/engine.ts` unless a file is given.
    starts with `BRAND` ("👮 **Wachiman**") on its first line: reviews post as
    `github-actions[bot]`, whose name and avatar do not say which tool wrote them (ADR 0005).
    It writes a first line saying whether coverage is complete or partial, the summary, a "Coverage
-   by batch" table, a footer with the model label, batch count and cost, and, only for a complete,
+   by batch" table (and, between the summary and that table, the collapsed "What the change
+   connects to" block from `renderContracts`: open contracts as questions with their candidate
+   files, closed ones one line each), a footer with the model label, batch count and cost, and, only for a complete,
    unscoped review, the marker for the next incremental run. Every piece of model text (summary,
    finding titles and bodies, thread replies, answers) and every repository-controlled string
    (file names in the lists and the moved findings, batch labels, skip reasons) goes through
@@ -185,7 +211,9 @@ All names are in `src/engine.ts` unless a file is given.
    can write a marker or a signature. The engine
    adds the signatures itself: `<!-- wachi:review -->` in the review body, `<!-- wachi:finding -->`
    in each inline comment, `<!-- wachi:reply -->` in each thread reply. The body is kept under
-   `MAX_BODY_CHARS`, shortening only the list of unreviewed files (`fitList`). `refuseLeak` asks
+   `MAX_BODY_CHARS`: the contracts block shrinks first (or goes), then the list of unreviewed
+   files is shortened (`fitList`); when comments move into the body, the contracts block is
+   trimmed before the coverage table, and that before the summary. `refuseLeak` asks
    the provider's `leaksSecret` about every piece of text about to be posted and aborts the
    whole post if one matches. `postReview` sends one review with `event: "COMMENT"`. `gh` failures
    are `GhError`s carrying the HTTP status, GitHub's message and the `errors` array of the response

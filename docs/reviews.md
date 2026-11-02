@@ -68,6 +68,8 @@ content and amounts are invented. It is not a recorded review.
 
 …
 
+▸ What the change connects to (1 closed, 1 open)  (collapsed: the flow questions answered)
+
 ▸ Coverage by batch (collapsed table: batch, files, lines, highest risk, status, turns, cost)
 
 Claude Sonnet 5.5 via Claude Code 2.1.304 · 2 batches · $0.42
@@ -76,7 +78,7 @@ Claude Sonnet 5.5 via Claude Code 2.1.304 · 2 batches · $0.42
 An inline finding, on its line in the diff, looks like this:
 
 ```text
-👮 **Wachiman** · 🟠🐛 **Fix · bug: Zero limit breaks the page count**
+👮 **Wachiman** · 🟠🐛 **Fix · bug: Zero limit breaks the page count (confidence high)**
 
 …the reasoning, citing the lines it rests on…
 ```
@@ -109,6 +111,11 @@ the contract is in [cli.md](cli.md#finding-labels).
 These are the only labels. A repository's instructions cannot add one
 ([review-policy.md](review-policy.md)).
 
+A finding also shows how sure the reviewer is, after its title: `(confidence high)`, `medium` or
+`low`. Severity says how bad the finding is if it is true; confidence says how sure the reviewer
+is that it is true. A finding the reviewer is not sure of at Fix or above is posted as a ❓
+question. Definitions: [cli.md](cli.md#finding-labels).
+
 ### Where each finding appears
 
 - **Inline, on its line.** A "Blocker", "Fix" or "Consider" finding on a line that is part of the
@@ -121,6 +128,12 @@ These are the only labels. A repository's instructions cannot add one
 - **If GitHub refuses the inline comments**, the engine posts them in the body under "On their
   lines (GitHub refused them inline)" instead, and says so. That only happens for a validation
   error. Other failures stop the run and post nothing.
+
+- **"What the change connects to", in the review body.** A collapsed block after the summary: the
+  questions the reviewer answered about what the change does to the running product. Open ones are
+  listed as questions with the files that would answer them; closed ones take one line each, with
+  the lines they rest on. The engine checks that those lines exist, not that the answers are true.
+  It is the first thing cut when the body is too long.
 
 Two reports of the same problem on the same file, line and topic are shown once, at the higher
 severity.
