@@ -3,7 +3,17 @@ import { loadConfig } from "./config";
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GhError, comment, review, type Deps, type GhFn, type ReviewOutput } from "./engine";
+import {
+  GhError,
+  changeSignature,
+  comment,
+  lastEngineMarker,
+  rebaseDelta,
+  review,
+  type Deps,
+  type GhFn,
+  type ReviewOutput,
+} from "./engine";
 import type { ProviderAdapter, ProviderRequest, ProviderResult } from "./providers/types";
 
 /** Plays back one scripted answer per call and records what the engine asked for. */
@@ -476,4 +486,164 @@ describe("comment with an operator that is not a real login", () => {
       expect(provider.requests).toHaveLength(0);
     });
   }
+});
+
+describe("a push after a review (incremental, rebase-aware)", () => {
+  const LAST = "old1111111";
+  const HEAD = "head1234567";
+  const PRIOR_BODY = `👮 **Wachiman** · review of the whole pull request, at \`old1111\`: all 4 files reviewed.\n\n<sub>x</sub>\n\n<!-- wachi:review -->\n\n<!-- agent-review sha=${LAST} -->\n\n<!-- wachi:attempt id=11111111-1111-1111-1111-111111111111 -->`;
+
+  /** The same added lines as `prFiles`, over a different base: other context rows and other line numbers. */
+  const rebasedFiles: typeof prFiles = [
+    { ...prFiles[0], patch: "@@ -40,1 +40,6 @@\n other context\n+a\n+b\n+c\n+d\n+e" },
+    { ...prFiles[1], patch: "@@ -0,0 +1,3 @@\n+x\n+y\n+z" },
+    { ...prFiles[2], sha: "logo-blob" },
+    { ...prFiles[3], patch: "@@ -0,0 +1,4 @@\n+w\n+x\n+y\n+z" },
+  ];
+  /** The logo has no patch (binary): only its blob says whether it changed. */
+  const withLogoBlob = (files: typeof prFiles, sha: string | undefined) =>
+    files.map((f) => (f.filename === LOGO ? { ...f, sha } : f));
+  const oldFiles = withLogoBlob(prFiles, "logo-blob");
+
+  interface World {
+    status: string | "throws";
+    /** What `base...last` lists; "throws" for a commit GitHub no longer has. */
+    old: typeof prFiles | "throws";
+    current: typeof prFiles;
+  }
+
+  function run(world: World) {
+    const posted: { review?: { body: string; comments: unknown[] } } = {};
+    const calls: string[] = [];
+    const base = fakeGh(posted, {}, world.current);
+    const gh: GhFn = (args, input) => {
+      const line = args.join(" ");
+      calls.push(line);
+      if (line.includes("/pulls/7/reviews") && !args.includes("POST"))
+        return JSON.stringify({ body: PRIOR_BODY, submitted_at: "2026-10-30T00:00:00Z" });
+      if (line.startsWith("api graphql"))
+        return JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } });
+      const compare = line.match(/compare\/(\S+?)\.\.\.(\S+)/);
+      if (compare) {
+        if (compare[1] === LAST) {
+          if (world.status === "throws") throw new GhError("gh: Not Found (HTTP 404)", 404, "Not Found");
+          return JSON.stringify({ status: world.status, files: world.current });
+        }
+        if (compare[1] === BASE && compare[2] === LAST) {
+          if (world.old === "throws") throw new GhError("gh: Not Found (HTTP 404)", 404, "Not Found");
+          return JSON.stringify({ status: "ahead", files: world.old });
+        }
+        throw new Error(`unexpected compare: ${line}`);
+      }
+      return base(args, input);
+    };
+    const prompts: string[] = [];
+    const provider = new FakeProvider([
+      (req) => {
+        prompts.push(req.prompt);
+        return {
+          costUsd: 0.1,
+          structuredOutput: out({
+            files_reviewed: world.current.map((f) => f.filename),
+            summary: "ok",
+          }),
+        };
+      },
+    ]);
+    const logs: string[] = [];
+    const deps: Deps = { gh, provider, config: loadConfig({}), log: (l) => void logs.push(l), warn: () => {} };
+    review(deps, "o/r", 7, []);
+    return { posted: posted.review, provider, prompts, logs, calls };
+  }
+
+  test("a rebase with the same lines posts only a marker and calls no model", () => {
+    for (const status of ["diverged", "behind"]) {
+      const r = run({ status, old: oldFiles, current: rebasedFiles });
+      expect(r.provider.requests).toHaveLength(0);
+      expect(r.posted?.comments).toEqual([]);
+      expect(r.posted?.body.split("\n")[0]).toBe(
+        `👮 **Wachiman** · Rebased onto \`bbbbbbb\`, no new changes since \`old1111\`.`,
+      );
+      expect(r.logs.join("\n")).toContain("rebased with no content change, nothing to review");
+      // The marker moved to the new head, in the shape the next push reads.
+      expect(lastEngineMarker([{ body: r.posted?.body ?? "" }])).toBe(HEAD);
+    }
+  });
+
+  test("a rebase where one file changed reviews only that file, and says so", () => {
+    const edited = rebasedFiles.map((f) =>
+      f.filename === STORE ? { ...f, additions: 4, patch: "@@ -0,0 +1,4 @@\n+x\n+y\n+z\n+extra" } : f,
+    );
+    const r = run({ status: "diverged", old: oldFiles, current: edited });
+    expect(r.provider.requests).toHaveLength(1);
+    const prompt = r.prompts[0];
+    expect(prompt).toContain(`- ${STORE} +4 −0`);
+    expect(prompt).not.toContain(`- ${MANAGER} +6 −0`);
+    expect(prompt).toContain("the branch was rebased since");
+    const first = r.posted?.body.split("\n")[0] ?? "";
+    expect(first).toBe(
+      `👮 **Wachiman** · review of the changes since \`old1111\` (after a rebase), at \`head123\`: all 1 files reviewed.`,
+    );
+    expect(r.posted?.body).toContain(`<!-- agent-review sha=${HEAD} -->`);
+  });
+
+  test("a new file after a rebase is reviewed; the unchanged ones are not", () => {
+    const added = [...rebasedFiles, { filename: "src/new.ts", additions: 1, deletions: 0, patch: "@@ -0,0 +1,1 @@\n+n" }];
+    const r = run({ status: "diverged", old: oldFiles, current: added });
+    expect(r.prompts[0]).toContain("- src/new.ts +1 −0");
+    expect(r.prompts[0]).not.toContain(`- ${LOGO}`);
+    expect(r.prompts[0]).not.toContain(`- ${MANAGER}`);
+  });
+
+  test("a file with no patch is reviewed again unless its blob is the same", () => {
+    // Same lines everywhere, but the logo's blob changed: only the logo goes to the model.
+    const r = run({ status: "diverged", old: oldFiles, current: withLogoBlob(rebasedFiles, "logo-blob-2") });
+    expect(r.provider.requests).toHaveLength(1);
+    expect(r.prompts[0]).toContain(`- ${LOGO} +0 −0`);
+    expect(r.prompts[0]).not.toContain(`- ${STORE}`);
+    // GitHub sent no blob for either side: nothing proves the logo is the same.
+    const unknown = run({ status: "diverged", old: withLogoBlob(prFiles, undefined), current: withLogoBlob(rebasedFiles, undefined) });
+    expect(unknown.provider.requests).toHaveLength(1);
+  });
+
+  test("when the old commit is gone, the change cannot be compared: full review, no crash", () => {
+    const r = run({ status: "throws", old: "throws", current: rebasedFiles });
+    expect(r.provider.requests).toHaveLength(1);
+    expect(r.logs.join("\n")).toContain("cannot be compared");
+    expect(r.prompts[0]).toContain("the whole pull request");
+    expect(r.posted?.body.split("\n")[0]).toContain("review of the whole pull request");
+  });
+
+  test("a list that may be cut short is not trusted: full review", () => {
+    const many = Array.from({ length: 300 }, (_, i) => ({ filename: `f${i}.ts`, additions: 1, deletions: 0, patch: "@@ -0,0 +1,1 @@\n+x" }));
+    const r = run({ status: "diverged", old: many, current: rebasedFiles });
+    expect(r.provider.requests).toHaveLength(1);
+    expect(r.prompts[0]).toContain("the whole pull request");
+  });
+
+  test("new commits on top (ahead) review only what compare lists, without the rebase check", () => {
+    const r = run({ status: "ahead", old: "throws", current: rebasedFiles });
+    expect(r.provider.requests).toHaveLength(1);
+    expect(r.calls.some((c) => c.includes(`compare/${BASE}...`))).toBe(false);
+    const first = r.posted?.body.split("\n")[0] ?? "";
+    expect(first).toContain("review of the changes since `old1111`, at `head123`");
+    expect(first).not.toContain("after a rebase");
+  });
+});
+
+describe("changeSignature and rebaseDelta", () => {
+  test("context rows, hunk headers and line numbers do not matter; added and removed rows do", () => {
+    const a = "@@ -1,3 +1,3 @@\n keep\n-old\n+new\n keep2";
+    const moved = "@@ -90,3 +95,3 @@\n different\n-old\n+new\n context";
+    expect(changeSignature(a)).toBe(changeSignature(moved));
+    expect(changeSignature(a)).not.toBe(changeSignature("@@ -1,3 +1,3 @@\n keep\n-old\n+newer\n keep2"));
+    expect(changeSignature(undefined)).toBeNull();
+    expect(changeSignature("")).toBeNull();
+  });
+
+  test("a file that left the pull request is reported, not reviewed", () => {
+    const gh: GhFn = () => JSON.stringify({ status: "ahead", files: prFiles });
+    const delta = rebaseDelta(gh, "o/r", BASE, "old1111111", [prFiles[0], prFiles[1], prFiles[3]].map((f) => ({ ...f })));
+    expect(delta).toEqual({ kind: "unchanged", removed: [LOGO] });
+  });
 });
