@@ -1,7 +1,7 @@
 # ADR 0008: Thread follow-up: the operator resolves, the model only reports
 
-- **Status:** proposed 2026-10-30. Not implemented. It depends on #40 (review identity) and
-  #42 (strict verdicts).
+- **Status:** proposed 2026-10-30. Not implemented. It depended on #40 (review identity), which is
+  closed, and still depends on #42 (strict verdicts), which is open.
 - **Date:** 2026-10-30
 - **Spec:** [2026-10-30-review-memory-and-threads-design.md](../specs/2026-10-30-review-memory-and-threads-design.md)
 

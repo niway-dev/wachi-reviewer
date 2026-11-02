@@ -1,7 +1,7 @@
 # ADR 0005: The name Wachi Reviewer and the `/wachi` command
 
 - **Status:** accepted; decision 1 (the name and the repository) is superseded by
-  [ADR 0009](0009-name-wachiman.md). The `/wachi` command and everything else here still hold.
+  [ADR 0010](0010-name-wachiman.md). The `/wachi` command and everything else here still hold.
 - **Date:** 2026-10-27
 
 ## Context

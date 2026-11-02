@@ -155,4 +155,4 @@ did each reviewer find it. Several Wachi runs per PR, since one run can be lucky
 - [Should we trust AI code review benchmarks?](https://dev.to/izgorodin/should-we-trust-ai-code-review-benchmarks-3p6n)
 - [Tenki benchmark](https://tenki.cloud/benchmarks/code-reviewer) ·
   [Entelligence benchmark-maxxing](https://github.com/Entelligence-AI/benchmark-maxxing)
-- Pullfrog run log: niway-dev/kaipu-record Actions run 41153840590. Wachi run: 41153836694.
+- Pullfrog and Wachi run logs: see the [field benchmark](../benchmark/2026-10-31/README.md).
