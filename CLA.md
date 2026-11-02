@@ -11,8 +11,9 @@ It applies to every Contribution You submit once You have accepted it.
 - **You keep the copyright** to what You write.
 - **You give NIWAY a broad, permanent license** to it, including the right to release it under
   other terms than the project's current license, for example a commercial license.
-- **Versions already published keep the license they were published under.** Each version also
-  becomes available under Apache 2.0 two years after it is made available.
+- **Versions already published keep the license they were published under.** Each version published
+  under FSL-1.1-ALv2 also becomes available under Apache 2.0 two years after that version is made
+  available.
 - You confirm that You have the right to contribute what You submit.
 
 The sections below are the binding text.
@@ -51,8 +52,8 @@ and under other licenses.
 
 - A version of Wachiman already published stays available under the license it was published
   under. A change of license applies only to versions published after it.
-- Each published version becomes available under the Apache License 2.0 on the second anniversary
-  of the date it is made available, as the project license provides.
+- Each version published under FSL-1.1-ALv2 also becomes available under the Apache License 2.0
+  on the second anniversary of the date that version is made available, as that license provides.
 - NIWAY may decline any Contribution and need not use one it accepts.
 
 ## 6. Your representations

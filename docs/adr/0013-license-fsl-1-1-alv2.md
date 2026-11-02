@@ -32,7 +32,8 @@ What was true when this was decided:
    already granted cannot be withdrawn, and this record does not try to.
 3. **Only a Competing Use needs a commercial license.** The license permits every purpose except
    making the software available to others in a commercial product or service that substitutes for
-   it, substitutes for something NIWAY offers using it, or offers the same or substantially
+   it, substitutes for another NIWAY product or service using it that already existed when that
+   version was made available, or offers the same or substantially
    similar functionality. Internal use, non-commercial education and research, and professional
    services to a licensee are Permitted Purposes. A commercial license is a separate agreement
    with NIWAY (Niway S.A.C.), requested at contact@niway.com and agreed case by case.

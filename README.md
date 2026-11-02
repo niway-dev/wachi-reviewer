@@ -123,15 +123,16 @@ Wachiman is **source available**, not open source. It is licensed under the
   use it.
 - **You may not**, without a commercial license, make it available to others as a commercial
   product or service that does what Wachiman does, hosted or packaged.
-- **Each version becomes Apache 2.0 two years after it is made available.** The license says so
-  under "Grant of Future License".
+- **Each version published under FSL-1.1-ALv2 also becomes available under Apache 2.0 two years
+  after that version is made available.** The license says so under "Grant of Future License".
 - **Commercial license:** write to contact@niway.com. There is no price list.
 - **Name and logo:** the license grants no rights to them. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ### Licensing history
 
-Everything published before 2026-11-01, including every release up to and including `v1.3.0`,
-was published under the GNU Affero General Public License v3 and remains available under it. The
+Everything published before the commit that replaced LICENSE, including releases through v1.3.0,
+remains available under GNU AGPL version 3 or any later version, as stated in those versions'
+LICENSE files. The
 `LICENSE` file inside each release tag says which license that release carries. The reason for the
 change is recorded in [ADR 0013](docs/adr/0013-license-fsl-1-1-alv2.md).
 
