@@ -25,11 +25,17 @@ the drag handle's batch never held the file whose call site pairs `markCopySeen`
    questions, each with `file:line` citations the engine checks. It returns no verdict on another
    batch, no uncited "this is correct" and no summary of its batch. This is what separates the
    judge from the pass over summaries that ADR 0009 rejected: the judge reads citations and the
-   cited code, never another model's conclusion.
+   cited code, never another model's conclusion. Citations alone are not enough. A citation proves
+   the text exists, not that it is sufficient, so "correct, see these lines" is still a summary
+   (GPT-6.1 Sol). Decisions 4 and 6 are what make the judge more than a ratifier.
 3. **Reader findings are posted directly** after the citation check. The judge adds and deepens.
    It does not gate them.
-4. **One judge per pull request** sees every batch's contracts and open questions, the cited code
-   and an index slice. It does not see the whole diff.
+4. **One judge per pull request** sees every batch's contracts, **closed ones included**, and open
+   questions, the cited code, an index slice and an **action ledger the engine builds** without
+   any reader (every changed action, removals included, with before and after hunks). It may
+   reopen any closed contract. It does not see the whole diff.
+6. **Disagreement is kept:** an open and a closed copy of one contract both reach the judge.
+   Today's `mergeContracts` drops the open one, and that changes first.
 5. **The judge has its own reserve,** which readers cannot spend. Investigation follows ADR 0009.
 
 ## Alternatives rejected
@@ -52,6 +58,11 @@ the drag handle's batch never held the file whose call site pairs `markCopySeen`
 - Type resolution.
 - A verification pass on every finding.
 - Codex in either role, before ADR 0004's workflow integration.
+
+## Kill condition
+
+Over repeated paired runs, readers systematically omit the evidence for bugs that a full-context
+Opus finds, and a packet-only Opus cannot recover them. The reader then stops being the only gate.
 
 ## What would reopen this
 
