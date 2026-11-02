@@ -88,10 +88,12 @@ gives no typical price: it depends on the size of the change and the model. See
 Yes to using it, including inside a company: the license allows every use except a Competing Use.
 Running Wachiman on your own repositories, forking it for internal use, and giving professional
 services to a client who may also use it are permitted. What needs a commercial license from
-NIWAY is making it available to others as a commercial product or service that does what
-Wachiman does, hosted or packaged. Each version becomes Apache 2.0 two years after it is made
-available. It is source available, not open source. The `LICENSE` file is the authority; this
-answer summarizes it. To ask about a specific case or to buy a commercial license, write to
+NIWAY (Niway S.A.C.) is making it available to others as a commercial product or service that
+does what Wachiman does, hosted or packaged. The definition also covers substitutes for NIWAY
+products or services using it that existed when that version was made available. Each version
+published under FSL-1.1-ALv2 also becomes available under Apache 2.0 two years after that version
+is made available. It is source available, not open source. The `LICENSE` file is the authority;
+this answer summarizes it. To ask about a specific case or to buy a commercial license, write to
 contact@niway.com.
 
 ### Which models can it use?
