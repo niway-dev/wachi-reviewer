@@ -328,6 +328,15 @@ When a review does read threads:
 Replies posted after the review itself appear in the thread as
 `👮 **Wachiman** · **Still open** at `e4f5a6b`: …`.
 
+**Why the timeline can show empty reviews.** The review itself is one submission: its body and
+every inline comment go in a single request. Each thread reply is a separate request, and GitHub
+files every reply made through its API under a review of its own, with no body. On a pull request
+with two replies you see the review and then two empty "reviewed" entries a couple of seconds
+apart. They hold the replies, not findings; the engine does not create them on purpose, and
+the same happens with replies from people and from other review bots (seen on
+`niway-dev/kaipu-record#467`). [Issue #17](https://github.com/niway-dev/wachiman/issues/17)
+tracks whether to batch replies.
+
 [ADR 0008](adr/0008-thread-follow-up-authority.md) proposes more (the operator's `Verdict:` reply
 resolving a thread, a cap of two replies per thread, follow-up even when no file changed). It is
 marked proposed and is not implemented. None of that happens today. The `Verdict:` replies that
