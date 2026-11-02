@@ -143,7 +143,8 @@ All names are in `src/engine.ts` unless a file is given.
    directory, not in the head) and a per-batch spend cap. Paths the agent reports are made
    repository-relative afterwards (`relativisePaths`), because it reads by absolute path.
    `checkOutput` then checks what the schema cannot: a finding's confidence is `high`, `medium`
-   or `low`, and each `contracts` entry has the right shape and cites lines that exist in the
+   or `low` (and, once the batches are merged, `enforceConfidenceRule` rewrites a `low`
+   confidence finding at Blocker or Fix to the `question` topic), and each `contracts` entry has the right shape and cites lines that exist in the
    checked-out head (`src/contracts.ts`: a file that exists, a line within its length, never
    outside the head). A citation that does not resolve is a warning on stderr and
    `evidence_checked: false` on the entry; the engine never judges whether an answer is true.

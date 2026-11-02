@@ -7,6 +7,7 @@ import {
   CONTRACTS_SUMMARY,
   countLine,
   dedupeFindings,
+  enforceConfidenceRule,
   FLOW_QUESTIONS,
   label,
   lastReviewedSha,
@@ -455,6 +456,57 @@ describe("dedupeFindings", () => {
     expect(dedupeFindings([at3("fix", "First"), at3("fix", "Second")]).map((f) => f.title)).toEqual([
       "First",
     ]);
+  });
+});
+
+describe("enforceConfidenceRule", () => {
+  const f = (severity: Finding["severity"], topic: Finding["topic"], confidence?: Finding["confidence"]): Finding => ({
+    path: "src/a.ts",
+    line: 3,
+    severity,
+    topic,
+    ...(confidence ? { confidence } : {}),
+    title: "Title",
+    body: "Is this deliberate?",
+  });
+
+  test("a low-confidence blocker or fix becomes a question; severity, title and body stay", () => {
+    const { findings, rewritten } = enforceConfidenceRule([f("fix", "bug", "low"), f("blocker", "security", "low")]);
+    expect(rewritten).toBe(2);
+    expect(findings).toEqual([
+      { ...f("fix", "bug", "low"), topic: "question" },
+      { ...f("blocker", "security", "low"), topic: "question" },
+    ]);
+  });
+
+  test("leaves everything else alone and counts only what it rewrote", () => {
+    const untouched = [
+      f("fix", "bug", "medium"),
+      f("blocker", "bug", "high"),
+      f("fix", "bug"), // no confidence: older output or an engine notice
+      f("consider", "bug", "low"),
+      f("info", "adr", "low"),
+      f("fix", "question", "low"), // already a question
+    ];
+    const { findings, rewritten } = enforceConfidenceRule(untouched);
+    expect(rewritten).toBe(0);
+    expect(findings).toEqual(untouched);
+  });
+
+  test("does not mutate its input", () => {
+    const input = [f("fix", "docs", "low")];
+    enforceConfidenceRule(input);
+    expect(input[0].topic).toBe("docs");
+  });
+
+  test("a rewritten question and another question on the same line collapse to the higher severity", () => {
+    const { findings } = enforceConfidenceRule([f("fix", "bug", "low"), f("consider", "question", "high")]);
+    expect(dedupeFindings(findings).map((x) => x.severity)).toEqual(["fix"]);
+  });
+
+  test("the label of a rewritten finding shows the question topic and the low confidence", () => {
+    const [rewritten] = enforceConfidenceRule([f("fix", "bug", "low")]).findings;
+    expect(label(rewritten)).toBe("🟠❓ **Fix · question: Title (confidence low)**");
   });
 });
 
